@@ -8,7 +8,7 @@
 		<version>3.0.4</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>pl.it.p.lodz.pl.zzpj</groupId>
+	<groupId>pl.lodz.p.it.zzpj</groupId>
 	<artifactId>Word-io</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>Word-io</name>

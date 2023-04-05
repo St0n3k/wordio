@@ -1,4 +1,4 @@
-package pl.it.p.lodz.pl.zzpj;
+package pl.lodz.p.it.zzpj;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

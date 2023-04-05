@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  wordio_db:
+    image: mongo:6.0.5
+    container_name: mongo_word-io
+    hostname: mongo_word-io
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: word-io
+      MONGO_INITDB_ROOT_PASSWORD: word-io-pwd
+    volumes:
+      - wordio:/data/db
+volumes:
+  wordio:

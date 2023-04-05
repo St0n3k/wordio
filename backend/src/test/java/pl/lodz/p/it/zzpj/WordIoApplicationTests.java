@@ -1,4 +1,4 @@
-package pl.it.p.lodz.pl.zzpj;
+package pl.lodz.p.it.zzpj;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

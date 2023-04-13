@@ -1,6 +1,7 @@
 package pl.lodz.p.it.zzpj.controller.dto;
 
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,6 +16,7 @@ public class RegisterDTO {
     @NotNull
     private String username;
 
+    @Email
     @NotNull
     private String email;
 

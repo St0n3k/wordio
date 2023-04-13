@@ -1,8 +1,6 @@
 package pl.lodz.p.it.zzpj.service;
 
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -12,7 +10,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.lodz.p.it.zzpj.entity.Account;
-import pl.lodz.p.it.zzpj.exception.auth.CreateAccountException;
 import pl.lodz.p.it.zzpj.exception.auth.LoginException;
 import pl.lodz.p.it.zzpj.exception.auth.PasswordNotMatchesException;
 import pl.lodz.p.it.zzpj.exception.auth.SamePasswordException;
@@ -31,35 +28,7 @@ public class AuthService {
 
     private final PasswordEncoder passwordEncoder;
 
-    @PostConstruct
-    private void init() {
-        clearAccounts();
-        initialData();
-    }
 
-    private void initialData() {
-        Account account = new Account("kamillo", "test@wp.pl", "test1234");
-        try {
-            this.registerAccount(account);
-        } catch (Exception ignored) {
-            //
-        }
-    }
-
-    private void clearAccounts() {
-        accountRepository.deleteAll();
-    }
-
-    public Account registerAccount(Account account) throws CreateAccountException {
-        Account acc;
-        try {
-            account.setPassword(passwordEncoder.encode(account.getPassword()));
-            acc = accountRepository.save(account);
-        } catch (DuplicateKeyException e) {
-            throw new CreateAccountException();
-        }
-        return acc;
-    }
 
     public void changePassword(String oldPassword, String newPassword)
         throws PasswordNotMatchesException, SamePasswordException {
@@ -89,7 +58,7 @@ public class AuthService {
 
         Account account = (Account) authentication.getPrincipal();
 
-        return jwtService.generateJWT(account.getUsername());
+        return jwtService.generateJWT(account);
     }
 
 }

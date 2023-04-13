@@ -5,12 +5,16 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.SignatureException;
+import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import pl.lodz.p.it.zzpj.entity.Account;
 
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
+import java.util.Collections;
 import java.util.Date;
 
 @Service
@@ -21,18 +25,25 @@ public class JwtService {
     @Value("${jwt.expiration.time}")
     private Long jwtExpirationInMillis;
 
-    public String generateJWT(String username) {
+    private Key getSigningKey() {
+        byte[] keyBytes = this.secret.getBytes(StandardCharsets.UTF_8);
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    public String generateJWT(Account account) {
+
         return Jwts.builder()
-            .setSubject(username)
+            .setSubject(account.getUsername())
             .setIssuedAt(new Date())
             .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationInMillis))
-            .signWith(SignatureAlgorithm.HS512, secret)
+            .claim("role", Collections.singleton(account.getRole()))
+            .signWith(this.getSigningKey(), SignatureAlgorithm.HS512)
             .compact();
     }
 
-    public Jws<Claims> parseJWT(String jwt) throws SignatureException {
-        return Jwts.parser()
-            .setSigningKey(secret)
+    public Jws<Claims> parseJWT(String jwt) {
+        return Jwts.parserBuilder()
+            .setSigningKey(getSigningKey()).build()
             .parseClaimsJws(jwt);
     }
 

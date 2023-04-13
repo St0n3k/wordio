@@ -3,6 +3,7 @@ package pl.lodz.p.it.zzpj.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,13 +14,13 @@ import pl.lodz.p.it.zzpj.controller.dto.ChangePasswordDTO;
 import pl.lodz.p.it.zzpj.controller.dto.LoginDTO;
 import pl.lodz.p.it.zzpj.controller.dto.RegisterDTO;
 import pl.lodz.p.it.zzpj.controller.dto.SuccessfulLoginDTO;
+import pl.lodz.p.it.zzpj.controller.dto.UuidDTO;
 import pl.lodz.p.it.zzpj.exception.auth.CreateAccountException;
 import pl.lodz.p.it.zzpj.exception.auth.LoginException;
 import pl.lodz.p.it.zzpj.exception.auth.PasswordNotMatchesException;
 import pl.lodz.p.it.zzpj.exception.auth.SamePasswordException;
+import pl.lodz.p.it.zzpj.service.AccountService;
 import pl.lodz.p.it.zzpj.service.AuthService;
-
-import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -28,15 +29,11 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @ResponseStatus(HttpStatus.CREATED)
-    @PostMapping("/register")
-    public UUID registerAccount(@Valid @RequestBody RegisterDTO registerDTO)
-        throws CreateAccountException {
-        return authService.registerAccount(registerDTO.mapToAccount()).getId();
-    }
+    private final AccountService accountService;
 
     @PutMapping("/password")
     @ResponseStatus(HttpStatus.OK)
+    @Secured("ROLE_PLAYER")
     public void changePassword(@Valid @RequestBody ChangePasswordDTO dto)
         throws PasswordNotMatchesException, SamePasswordException {
         authService.changePassword(dto.getOldPassword(), dto.getNewPassword());
@@ -46,6 +43,16 @@ public class AuthController {
     @PostMapping("/login")
     public SuccessfulLoginDTO login(@Valid @RequestBody LoginDTO loginDTO) throws LoginException {
         return new SuccessfulLoginDTO(authService.login(loginDTO.getUsername(), loginDTO.getPassword()));
+    }
+
+    @ResponseStatus(HttpStatus.CREATED)
+    @PostMapping("/register")
+    public UuidDTO registerAccount(@Valid @RequestBody RegisterDTO registerDTO)
+        throws CreateAccountException {
+        return new UuidDTO(accountService
+            .registerAccount(registerDTO.mapToAccount())
+            .getId()
+        );
     }
 
 }

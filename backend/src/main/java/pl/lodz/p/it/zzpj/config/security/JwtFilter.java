@@ -14,7 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import pl.lodz.p.it.zzpj.entity.Account;
-import pl.lodz.p.it.zzpj.service.AccountNotFoundException;
+import pl.lodz.p.it.zzpj.exception.account.AccountNotFoundException;
 import pl.lodz.p.it.zzpj.service.AccountService;
 import pl.lodz.p.it.zzpj.service.JwtService;
 

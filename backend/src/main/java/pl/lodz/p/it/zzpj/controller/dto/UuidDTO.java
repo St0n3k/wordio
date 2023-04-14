@@ -12,5 +12,5 @@ import java.util.UUID;
 @NoArgsConstructor
 public class UuidDTO {
     @NotNull
-    private UUID uuid;
+    private UUID id;
 }

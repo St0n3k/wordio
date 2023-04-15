@@ -1,0 +1,13 @@
+{
+  "_id": {
+    "$binary": {
+      "base64": "5U1hr/MJSd+V22ni3OlvcA==",
+      "subType": "04"
+    }
+  },
+  "username": "kamillo",
+  "email": "test@wp.pl",
+  "password": "$2a$10$Y9qVD3AvaZjjnwOi3QhRxeYsf0/RLVTLyg2VeqOaETdjK1B9uhfwi",
+  "role": "PLAYER",
+  "_class": "pl.lodz.p.it.zzpj.entity.Account"
+}

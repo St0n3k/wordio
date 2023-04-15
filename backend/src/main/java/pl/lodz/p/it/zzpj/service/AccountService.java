@@ -1,6 +1,5 @@
 package pl.lodz.p.it.zzpj.service;
 
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,25 +22,6 @@ public class AccountService implements UserDetailsService {
     private final AccountRepository accountRepository;
 
     private final PasswordEncoder passwordEncoder;
-
-    @PostConstruct
-    private void init() {
-        clearAccounts();
-        initialData();
-    }
-
-    private void initialData() {
-        Account account = new Account("kamillo", "test@wp.pl", "test1234");
-        try {
-            this.registerAccount(account);
-        } catch (Exception ignored) {
-            //Ignored, because there are no duplicates in initial data
-        }
-    }
-
-    private void clearAccounts() {
-        accountRepository.deleteAll();
-    }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {

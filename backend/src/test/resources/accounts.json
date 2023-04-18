@@ -11,3 +11,16 @@
   "role": "PLAYER",
   "_class": "pl.lodz.p.it.zzpj.entity.Account"
 }
+{
+  "_id": {
+    "$binary": {
+      "base64": "itWEagoPRou46Kn7pvfUJw==",
+      "subType": "04"
+    }
+  },
+  "_class": "pl.lodz.p.it.zzpj.entity.Account",
+  "email": "delete@wp.pl",
+  "password": "$2a$10$sEqHuprG21bTEIg3F56BI..XxnNi8rBJ3uFiPO0zU8xcjcYiUc3T.",
+  "role": "PLAYER",
+  "username": "delete"
+}

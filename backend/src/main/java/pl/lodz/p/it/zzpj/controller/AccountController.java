@@ -17,7 +17,7 @@ public class AccountController {
     private final AccountService accountService;
 
     @ResponseStatus(HttpStatus.OK)
-    @DeleteMapping("/")
+    @DeleteMapping
     @Secured("ROLE_PLAYER")
     public void deleteAccount() {
         accountService.deleteAccount();

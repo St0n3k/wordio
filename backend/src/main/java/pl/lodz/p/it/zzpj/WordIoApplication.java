@@ -8,8 +8,8 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @EnableMongoRepositories
 public class WordIoApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(WordIoApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(WordIoApplication.class, args);
+    }
 
 }

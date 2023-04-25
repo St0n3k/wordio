@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import pl.lodz.p.it.zzpj.entity.Account;
 
-import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Collections;
 import java.util.Date;
@@ -20,18 +19,14 @@ import java.util.Date;
 @Service
 @RequiredArgsConstructor
 public class JwtService {
-    @Value("${jwt.secret}")
-    private String secret;
     @Value("${jwt.expiration.time}")
     private Long jwtExpirationInMillis;
 
     private Key getSigningKey() {
-        byte[] keyBytes = this.secret.getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
+        return Keys.secretKeyFor(SignatureAlgorithm.HS512);
     }
 
     public String generateJWT(Account account) {
-
         return Jwts.builder()
             .setSubject(account.getUsername())
             .setIssuedAt(new Date())

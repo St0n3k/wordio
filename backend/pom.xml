@@ -142,6 +142,24 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>${plugin.pmd.version}</version>
+                <configuration>
+                    <targetJdk>${maven.compiler.source}</targetJdk>
+                </configuration>
+                <inherited>false</inherited>
+                <executions>
+                    <execution>
+                        <id>PMD</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-site-plugin</artifactId>
                 <version>${plugin.site.version}</version>
             </plugin>
@@ -162,7 +180,7 @@
                 <reportSets>
                     <reportSet>
                         <reports>
-                            <report>checkstyle-aggregate</report>
+                            <report>checkstyle</report>
                         </reports>
                         <inherited>false</inherited>
                     </reportSet>

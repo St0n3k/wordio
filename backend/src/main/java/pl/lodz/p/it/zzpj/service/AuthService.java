@@ -50,8 +50,8 @@ public class AuthService {
         Authentication authentication;
 
         try {
-            authentication = authenticationManager.
-                authenticate(new UsernamePasswordAuthenticationToken(username, password));
+            authentication = authenticationManager
+                .authenticate(new UsernamePasswordAuthenticationToken(username, password));
         } catch (AuthenticationException ae) {
             throw new LoginException();
         }

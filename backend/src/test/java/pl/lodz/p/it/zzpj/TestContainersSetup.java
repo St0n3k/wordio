@@ -3,7 +3,6 @@ package pl.lodz.p.it.zzpj;
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -58,10 +57,5 @@ public abstract class TestContainersSetup {
             "--password=word-io-pwd",
             "--authenticationDatabase=admin",
             "./accounts.json");
-    }
-
-    @AfterAll
-    static void clearContainers() {
-        mongoContainer.stop();
     }
 }

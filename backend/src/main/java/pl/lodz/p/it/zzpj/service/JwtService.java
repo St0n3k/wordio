@@ -22,9 +22,7 @@ public class JwtService {
     @Value("${jwt.expiration.time}")
     private Long jwtExpirationInMillis;
 
-    private Key getSigningKey() {
-        return Keys.secretKeyFor(SignatureAlgorithm.HS512);
-    }
+    private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS512);
 
     public String generateJWT(Account account) {
         return Jwts.builder()
@@ -32,13 +30,13 @@ public class JwtService {
             .setIssuedAt(new Date())
             .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationInMillis))
             .claim("role", Collections.singleton(account.getRole()))
-            .signWith(this.getSigningKey(), SignatureAlgorithm.HS512)
+            .signWith(key, SignatureAlgorithm.HS512)
             .compact();
     }
 
     public Jws<Claims> parseJWT(String jwt) {
         return Jwts.parserBuilder()
-            .setSigningKey(getSigningKey()).build()
+            .setSigningKey(key).build()
             .parseClaimsJws(jwt);
     }
 

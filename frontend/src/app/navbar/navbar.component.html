@@ -1,0 +1,44 @@
+<nav
+    class="col-sm-8 mx-auto rounded-bottom-5 fs-4 navbar navbar-expand-lg bg-warning shadow">
+    <div class="container-fluid">
+        <button
+            class="shadow-none w-100 mx-auto navbar-toggler border-0 text-dark"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarNavDropdown"
+            aria-controls="navbarNavDropdown"
+            aria-expanded="false"
+            aria-label="Toggle navigation">
+            <i class="bi bi-chevron-down me-2"></i>
+            <i class="bi bi-pencil-square"></i>
+            Word.io
+            <i class="bi bi-chevron-down me-2"></i>
+        </button>
+        <div
+            class="collapse navbar-collapse"
+            id="navbarNavDropdown">
+            <ul class="navbar-nav text-center mx-auto me-auto mb-2 mb-lg-0">
+                <li class="nav-item me-sm-2">
+                    <a
+                        class="nav-link active"
+                        [routerLink]="'/register'"
+                        >Register</a
+                    >
+                </li>
+                <a
+                    class="d-none d-sm-block navbar-brand fs-4 my-auto nav-item mx-auto"
+                    href="#">
+                    <i class="bi bi-pencil-square"></i>
+                    Word.io
+                </a>
+                <li class="nav-item ms-sm-2">
+                    <a
+                        class="nav-link active"
+                        [routerLink]="'/login'"
+                        >Login</a
+                    >
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>

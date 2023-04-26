@@ -1,5 +1,5 @@
 <nav
-    class="col-sm-8 mx-auto rounded-bottom-5 fs-4 navbar navbar-expand-lg bg-warning shadow">
+    class="sticky-top col-sm-8 mx-auto rounded-bottom-5 fs-4 navbar navbar-expand-lg bg-warning shadow">
     <div class="container-fluid">
         <button
             class="shadow-none w-100 mx-auto navbar-toggler border-0 text-dark"
@@ -28,7 +28,16 @@
         <div
             class="collapse navbar-collapse"
             id="navbarNavDropdown">
-            <ul class="navbar-nav text-center mx-auto me-auto mb-2 mb-lg-0">
+            <div
+                *ngIf="authService.authenticated.getValue()"
+                class="nav-item ms-sm-2 my-auto vertical-align-middle">
+                <a
+                    class="nav-link text-center text-start mt-sm-0 mt-2 mb-sm-0 mb-2 active"
+                    >Hi, {{ authService.getUsername() }}</a
+                >
+            </div>
+            <ul
+                class="justify-content-between navbar-nav text-center mx-auto me-auto mb-2 mb-lg-0">
                 <li class="nav-item d-sm-none me-sm-2">
                     <a
                         class="nav-link active"
@@ -36,7 +45,9 @@
                         >Home</a
                     >
                 </li>
-                <li class="nav-item me-sm-2">
+                <li
+                    *ngIf="!authService.authenticated.getValue()"
+                    class="nav-item me-sm-2">
                     <a
                         class="nav-link active"
                         [routerLink]="'/register'"
@@ -49,11 +60,22 @@
                     <i class="bi bi-pencil-square"></i>
                     Word.io
                 </a>
-                <li class="nav-item ms-sm-2">
+                <li
+                    *ngIf="!authService.authenticated.getValue()"
+                    class="nav-item ms-sm-2">
                     <a
                         class="nav-link active"
                         [routerLink]="'/login'"
                         >Login</a
+                    >
+                </li>
+                <li
+                    *ngIf="authService.authenticated.getValue()"
+                    class="nav-item ms-sm-2">
+                    <a
+                        class="nav-link active"
+                        (click)="logout()"
+                        >Logout</a
                     >
                 </li>
             </ul>

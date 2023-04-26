@@ -7,4 +7,12 @@
         type="danger">
         <span class="text-white">{{ message }}</span>
     </ngb-alert>
+    <ngb-alert
+        (closed)="success = false"
+        *ngIf="success === true"
+        [dismissible]="true"
+        class="border-success bg-success shadow alert alert-success fade show m-3"
+        type="success">
+        <span class="text-white">{{ message }}</span>
+    </ngb-alert>
 </div>

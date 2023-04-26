@@ -8,6 +8,7 @@ import { AlertService } from '../../services/alert.service';
 })
 export class AlertComponent {
     error = false;
+    success = false;
     message = '';
     lastCallback: any;
 
@@ -18,6 +19,10 @@ export class AlertComponent {
             switch (event.type) {
                 case 'error': {
                     this.error = true;
+                    break;
+                }
+                case 'success': {
+                    this.success = true;
                     break;
                 }
             }

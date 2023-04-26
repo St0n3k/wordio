@@ -12,6 +12,14 @@ import { BehaviorSubject } from 'rxjs';
 export class AuthService {
     authenticated = new BehaviorSubject(false);
     constructor(private http: HttpClient, private router: Router) {
+        const jwt = localStorage.getItem('jwt');
+        if (jwt != null) {
+            const expires = this.getDecodedJwtToken(jwt).exp;
+            if (expires > Date.now()) {
+                window.location.href = '/login';
+            }
+            if (this.getDecodedJwtToken(jwt)) this.authenticated.next(true);
+        }
         window.addEventListener(
             'storage',
             (event) => {
@@ -35,7 +43,7 @@ export class AuthService {
     }
     saveUserData(result: any) {
         const tokenInfo = this.getDecodedJwtToken(result.body.jwt);
-        localStorage.setItem('username', result.body.sub);
+        localStorage.setItem('username', tokenInfo.sub);
         localStorage.setItem('jwt', result.body.jwt);
         localStorage.setItem('role', tokenInfo.role);
     }
@@ -59,9 +67,7 @@ export class AuthService {
     logout() {
         this.clearUserData();
         this.authenticated.next(false);
-        this.router.navigate(['/login'], {
-            queryParams: { 'logout-success': true }
-        });
+        this.router.navigate(['/login']);
     }
 
     getRole() {
@@ -74,12 +80,12 @@ export class AuthService {
     }
 
     getUsername() {
-        return localStorage.getItem('sub');
+        return localStorage.getItem('username');
     }
 
     clearUserData() {
         localStorage.removeItem('role');
-        localStorage.removeItem('email');
+        localStorage.removeItem('username');
         localStorage.removeItem('jwt');
     }
 

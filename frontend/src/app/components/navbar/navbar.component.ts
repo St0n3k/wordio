@@ -1,4 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
+import { AuthService } from '../../services/auth.service';
+import { AlertService } from '../../services/alert.service';
 
 @Component({
     selector: 'app-navbar',
@@ -7,4 +9,14 @@ import { Component, OnInit } from '@angular/core';
 })
 export class NavbarComponent {
     isCollapsed = true;
+
+    constructor(
+        protected authService: AuthService,
+        private alertService: AlertService
+    ) {}
+
+    logout() {
+        this.authService.logout();
+        this.alertService.showAlert('success', 'Logged out successfully!');
+    }
 }

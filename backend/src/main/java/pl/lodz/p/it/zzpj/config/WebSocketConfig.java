@@ -13,8 +13,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // endpoint for handshake
         registry.addEndpoint("/wordio")
-                .setAllowedOrigins("*")
-                .withSockJS();
+            .setAllowedOrigins("*")
+            .withSockJS();
     }
 
     @Override

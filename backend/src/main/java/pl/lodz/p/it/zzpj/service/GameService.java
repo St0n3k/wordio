@@ -26,7 +26,6 @@ public class GameService {
             username);
 
         ongoingGames.put(username, game);
-        System.out.println(ongoingGames);
 
         return new UuidDTO(game.id());
     }

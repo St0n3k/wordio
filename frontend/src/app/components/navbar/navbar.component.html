@@ -8,16 +8,34 @@
             data-bs-target="#navbarNavDropdown"
             aria-controls="navbarNavDropdown"
             aria-expanded="false"
-            aria-label="Toggle navigation">
-            <i class="bi bi-chevron-down me-2"></i>
+            aria-label="Toggle navigation"
+            (click)="isCollapsed = !isCollapsed">
+            <i
+                *ngIf="!isCollapsed"
+                class="bi bi-chevron-up me-2"></i>
+            <i
+                *ngIf="isCollapsed"
+                class="bi bi-chevron-down me-2"></i>
             <i class="bi bi-pencil-square"></i>
             Word.io
-            <i class="bi bi-chevron-down me-2"></i>
+            <i
+                *ngIf="!isCollapsed"
+                class="bi bi-chevron-up me-2"></i>
+            <i
+                *ngIf="isCollapsed"
+                class="bi bi-chevron-down me-2"></i>
         </button>
         <div
             class="collapse navbar-collapse"
             id="navbarNavDropdown">
             <ul class="navbar-nav text-center mx-auto me-auto mb-2 mb-lg-0">
+                <li class="nav-item d-sm-none me-sm-2">
+                    <a
+                        class="nav-link active"
+                        [routerLink]="'/'"
+                        >Home</a
+                    >
+                </li>
                 <li class="nav-item me-sm-2">
                     <a
                         class="nav-link active"

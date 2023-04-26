@@ -1,0 +1,10 @@
+<div class="mx-auto col-sm-4">
+    <ngb-alert
+        (closed)="error = false"
+        *ngIf="error === true"
+        [dismissible]="true"
+        class="border-danger bg-danger shadow alert alert-danger fade show m-3"
+        type="danger">
+        <span class="text-white">{{ message }}</span>
+    </ngb-alert>
+</div>

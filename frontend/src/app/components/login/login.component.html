@@ -1,25 +1,30 @@
 <div class="col-sm-8 col-sm-10 mx-auto">
-    <form class="col-sm-6 mx-auto mt-3 card p-5 shadow">
+    <form
+        class="col-sm-6 mx-auto mt-3 card p-5 shadow"
+        (ngSubmit)="onSubmit()"
+        [formGroup]="loginForm">
         <div class="mx-auto card-title">
             <h1>Login</h1>
         </div>
         <div class="card-body">
             <div class="form-group mb-3">
-                <label for="exampleInputUsername1">Username</label>
+                <label for="username">Username</label>
                 <input
                     type="text"
                     class="form-control"
-                    id="exampleInputUsername1"
+                    id="username"
                     aria-describedby="emailHelp"
-                    placeholder="Username" />
+                    placeholder="Username"
+                    formControlName="username" />
             </div>
             <div class="form-group mb-3">
-                <label for="exampleInputPassword1">Password</label>
+                <label for="password">Password</label>
                 <input
                     type="password"
                     class="form-control"
-                    id="exampleInputPassword1"
-                    placeholder="Password" />
+                    id="password"
+                    placeholder="Password"
+                    formControlName="password" />
             </div>
             <div class="col-4 mx-auto">
                 <button

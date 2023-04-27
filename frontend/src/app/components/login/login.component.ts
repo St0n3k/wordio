@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
@@ -37,7 +37,7 @@ export class LoginComponent {
                         if (result.status == 200) {
                             this.authService.saveUserData(result);
                             this.authService.authenticated.next(true);
-                            this.router.navigate(['/']);
+                            this.router.navigate(['/profile']);
                         }
                     },
                     (error) => {

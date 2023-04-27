@@ -6,8 +6,7 @@ import { AlertService } from '../../services/alert.service';
 
 @Component({
     selector: 'app-change-password',
-    templateUrl: './change-password.component.html',
-    styleUrls: ['./change-password.component.css']
+    templateUrl: './change-password.component.html'
 })
 export class ChangePasswordComponent {
     changePasswordForm = new FormGroup({

@@ -6,8 +6,7 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
     selector: 'app-delete-account',
-    templateUrl: './delete-account.component.html',
-    styleUrls: ['./delete-account.component.css']
+    templateUrl: './delete-account.component.html'
 })
 export class DeleteAccountComponent {
     deleteModal: NgbModalRef | undefined;

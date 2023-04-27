@@ -11,6 +11,7 @@ import { BehaviorSubject } from 'rxjs';
 })
 export class AuthService {
     authenticated = new BehaviorSubject(false);
+
     constructor(private http: HttpClient, private router: Router) {
         const jwt = localStorage.getItem('jwt');
         if (jwt != null) {
@@ -41,6 +42,7 @@ export class AuthService {
             { observe: 'response' }
         );
     }
+
     saveUserData(result: any) {
         const tokenInfo = this.getDecodedJwtToken(result.body.jwt);
         localStorage.setItem('username', tokenInfo.sub);
@@ -58,10 +60,16 @@ export class AuthService {
 
     changePassword(oldPassword: string, newPassword: string) {
         return this.http.put<LoginResponse>(
-            `${environment.apiUrl}/changePassword`,
+            `${environment.apiUrl}/auth/password`,
             { oldPassword, newPassword },
             { observe: 'response' }
         );
+    }
+
+    deleteAccount() {
+        return this.http.delete(`${environment.apiUrl}/user`, {
+            observe: 'response'
+        });
     }
 
     logout() {

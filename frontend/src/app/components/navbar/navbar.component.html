@@ -2,7 +2,7 @@
     class="sticky-top col-sm-8 mx-auto rounded-bottom-5 fs-4 navbar navbar-expand-lg bg-warning shadow">
     <div class="container-fluid">
         <button
-            class="shadow-none w-100 mx-auto navbar-toggler border-0 text-dark"
+            class="shadow-none fw-bold fs-3 w-100 mx-auto navbar-toggler border-0 text-dark"
             type="button"
             data-bs-toggle="collapse"
             data-bs-target="#navbarNavDropdown"
@@ -16,7 +16,6 @@
             <i
                 *ngIf="isCollapsed"
                 class="bi bi-chevron-down me-2"></i>
-            <i class="bi bi-pencil-square"></i>
             Word.io
             <i
                 *ngIf="!isCollapsed"
@@ -26,38 +25,61 @@
                 class="bi bi-chevron-down me-2"></i>
         </button>
         <div
-            class="collapse navbar-collapse"
+            class="collapse navbar-collapse d-flex justify-content-between"
             id="navbarNavDropdown">
             <div
                 *ngIf="authService.authenticated.getValue()"
-                class="nav-item ms-sm-2 my-auto vertical-align-middle">
+                class="position-absolute d-none d-lg-block nav-item mt-2 mt-lg-0 mb-2 mb-lg-0 ms-sm-2 my-auto vertical-align-middle">
                 <a
                     class="nav-link text-center text-start mt-sm-0 mt-2 mb-sm-0 mb-2 active"
-                    >Hi, {{ authService.getUsername() }}</a
-                >
+                    ><span class="text-truncate">
+                        Hi,
+                        {{ authService.getUsername() | slice : 0 : 6 }} </span
+                    >!
+                </a>
             </div>
             <ul
                 class="justify-content-between navbar-nav text-center mx-auto me-auto mb-2 mb-lg-0">
-                <li class="nav-item d-sm-none me-sm-2">
+                <li
+                    *ngIf="authService.authenticated.getValue()"
+                    class="d-block d-lg-none nav-item ms-sm-2">
                     <a
                         class="nav-link active"
-                        [routerLink]="'/'"
-                        >Home</a
-                    >
+                        [routerLink]="'/play'"
+                        ><i class="bi bi-controller"></i> Play!
+                    </a>
+                </li>
+                <li class="nav-item d-lg-none me-sm-2">
+                    <a
+                        class="nav-link active"
+                        [routerLink]="'/'">
+                        <i class="bi bi-house"></i>
+                        Home
+                    </a>
+                </li>
+                <li
+                    *ngIf="authService.authenticated.getValue()"
+                    class="nav-item me-sm-2">
+                    <a
+                        class="nav-link active"
+                        [routerLink]="'/profile'">
+                        <i class="bi bi-person"></i>
+                        Profile
+                    </a>
                 </li>
                 <li
                     *ngIf="!authService.authenticated.getValue()"
                     class="nav-item me-sm-2">
                     <a
                         class="nav-link active"
-                        [routerLink]="'/register'"
-                        >Register</a
-                    >
+                        [routerLink]="'/register'">
+                        <i class="bi bi-pen"></i>
+                        Register
+                    </a>
                 </li>
                 <a
-                    class="d-none d-sm-block navbar-brand fs-4 my-auto nav-item mx-auto"
+                    class="flex-grow-1 d-none fw-bold d-lg-block navbar-brand fs-3 my-auto nav-item mx-auto"
                     href="#">
-                    <i class="bi bi-pencil-square"></i>
                     Word.io
                 </a>
                 <li
@@ -65,20 +87,32 @@
                     class="nav-item ms-sm-2">
                     <a
                         class="nav-link active"
-                        [routerLink]="'/login'"
-                        >Login</a
-                    >
+                        [routerLink]="'/login'">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        Login
+                    </a>
                 </li>
                 <li
                     *ngIf="authService.authenticated.getValue()"
                     class="nav-item ms-sm-2">
                     <a
+                        role="button"
                         class="nav-link active"
-                        (click)="logout()"
-                        >Logout</a
+                        (click)="logout()">
+                        <i class="bi bi-box-arrow-right"></i>
+                        Logout</a
                     >
                 </li>
             </ul>
+            <div
+                *ngIf="authService.authenticated.getValue()"
+                class="position-absolute d-none d-lg-block end-0 nav-item mt-2 mt-lg-0 mb-2 mb-lg-0 me-sm-3 my-auto vertical-align-middle">
+                <a
+                    class="nav-link text-center text-start mt-sm-0 mt-2 mb-sm-0 mb-2 active"
+                    [routerLink]="'/play'"
+                    ><i class="bi bi-controller"></i> Play!
+                </a>
+            </div>
         </div>
     </div>
 </nav>

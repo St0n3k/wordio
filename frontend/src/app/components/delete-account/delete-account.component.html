@@ -1,0 +1,44 @@
+<div class="col-sm-8 col-sm-10 mx-auto">
+    <div class="mx-auto card p-5 shadow col-sm-6 mt-3">
+        <div class="mx-auto card-title">
+            <h1>Delete account</h1>
+        </div>
+
+        <button
+            class="btn btn-danger"
+            (click)="this.showDeleteModal(confirmDeleteModal)">
+            Delete account
+        </button>
+    </div>
+
+    <ng-template
+        #confirmDeleteModal
+        let-modal>
+        <div class="modal-header">
+            <h4 class="modal-title">Confirm</h4>
+            <button
+                type="button"
+                class="btn-close"
+                aria-label="Close"
+                (click)="modal.close('Cross click')"></button>
+        </div>
+        <div class="modal-body">
+            Are you sure you want to delete your account? This action cannot be
+            undone!
+        </div>
+        <div class="modal-footer">
+            <button
+                type="button"
+                class="btn btn-danger"
+                (click)="modal.close('Close click')">
+                No
+            </button>
+            <button
+                type="button"
+                class="btn btn-warning"
+                (click)="modal.close(); deleteAccount()">
+                Yes, delete the account
+            </button>
+        </div>
+    </ng-template>
+</div>

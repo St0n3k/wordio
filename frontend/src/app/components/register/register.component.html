@@ -15,7 +15,13 @@
                     id="username"
                     aria-describedby="emailHelp"
                     placeholder="Username"
-                    formControlName="username" />
+                    formControlName="username"
+                    [ngClass]="{
+                        'is-valid':
+                            username && username.touched && username.valid,
+                        'is-invalid':
+                            username && username.touched && username.invalid
+                    }" />
             </div>
             <div class="form-group mb-3">
                 <label for="email">Email address</label>
@@ -25,7 +31,11 @@
                     id="email"
                     aria-describedby="emailHelp"
                     placeholder="Email"
-                    formControlName="email" />
+                    formControlName="email"
+                    [ngClass]="{
+                        'is-valid': email && email.touched && email.valid,
+                        'is-invalid': email && email.touched && email.invalid
+                    }" />
             </div>
             <div class="form-group mb-3">
                 <label for="password">Password</label>
@@ -33,8 +43,14 @@
                     type="password"
                     class="form-control"
                     id="password"
-                    placeholder="Password"
-                    formControlName="password" />
+                    placeholder="Password (8-20 characters)"
+                    formControlName="password"
+                    [ngClass]="{
+                        'is-valid':
+                            password && password.touched && password.valid,
+                        'is-invalid':
+                            password && password.touched && password.invalid
+                    }" />
             </div>
             <div class="form-group mb-3">
                 <label for="repeatedPassword">Repeat password</label>
@@ -43,10 +59,30 @@
                     class="form-control"
                     id="repeatedPassword"
                     placeholder="Repeat password"
-                    formControlName="repeatedPassword" />
+                    formControlName="repeatedPassword"
+                    [ngClass]="{
+                        'is-valid':
+                            repeatedPassword &&
+                            repeatedPassword.touched &&
+                            repeatedPassword.valid,
+                        'is-invalid':
+                            repeatedPassword &&
+                            repeatedPassword.touched &&
+                            repeatedPassword.invalid
+                    }" />
             </div>
+
+            <ngb-alert
+                *ngIf="repeatedPassword?.hasError('notSame')"
+                [dismissible]="false"
+                class="alert alert-danger fade show m-3"
+                type="danger">
+                <span>Passwords do not match!</span>
+            </ngb-alert>
+
             <div class="col-5 col-sm-4 mx-auto">
                 <button
+                    [disabled]="registerForm.invalid"
                     type="submit"
                     class="w-100 btn btn-warning">
                     Register

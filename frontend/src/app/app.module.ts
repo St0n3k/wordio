@@ -14,6 +14,7 @@ import { ProfileComponent } from './components/profile/profile.component';
 import { ChangePasswordComponent } from './components/change-password/change-password.component';
 import { DeleteAccountComponent } from './components/delete-account/delete-account.component';
 import { JwtInterceptor } from './interceptors/jwt.interceptor';
+import { UsernamePipe } from './components/navbar/usernamePipe';
 
 @NgModule({
     declarations: [
@@ -24,7 +25,8 @@ import { JwtInterceptor } from './interceptors/jwt.interceptor';
         AlertComponent,
         ProfileComponent,
         ChangePasswordComponent,
-        DeleteAccountComponent
+        DeleteAccountComponent,
+        UsernamePipe
     ],
     imports: [
         BrowserModule,

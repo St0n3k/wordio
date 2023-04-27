@@ -25,18 +25,12 @@ export class AlertComponent {
                     break;
                 }
             }
-            let timeoutString = localStorage.getItem('alertTimeout');
-            if (!timeoutString) {
-                timeoutString = '5000';
-            }
-            const timeout = JSON.parse(timeoutString);
-            if (timeout != 0) {
-                const callback = setTimeout(() => {
-                    this.resetAlerts();
-                }, timeout);
-                clearTimeout(this.lastCallback);
-                this.lastCallback = callback;
-            }
+            const timeout = 5000;
+            const callback = setTimeout(() => {
+                this.resetAlerts();
+            }, timeout);
+            clearTimeout(this.lastCallback);
+            this.lastCallback = callback;
         });
     }
 

@@ -1,7 +1,7 @@
 <div class="mx-auto col-sm-4">
     <ngb-alert
         (closed)="error = false"
-        *ngIf="error === true"
+        *ngIf="error"
         [dismissible]="true"
         class="border-danger bg-danger shadow alert alert-danger fade show m-3"
         type="danger">
@@ -9,7 +9,7 @@
     </ngb-alert>
     <ngb-alert
         (closed)="success = false"
-        *ngIf="success === true"
+        *ngIf="success"
         [dismissible]="true"
         class="border-success bg-success shadow alert alert-success fade show m-3"
         type="success">

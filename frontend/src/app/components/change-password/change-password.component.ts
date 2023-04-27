@@ -60,10 +60,7 @@ export class ChangePasswordComponent {
             }
 
             this.authService
-                .changePassword(
-                    oldPassword!.toString(),
-                    newPassword!.toString()
-                )
+                .changePassword(oldPassword!, newPassword!)
                 .subscribe(
                     (result) => {
                         if (result.status == 200) {

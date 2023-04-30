@@ -1,4 +1,4 @@
-package pl.lodz.p.it.zzpj.controller.dto;
+package pl.lodz.p.it.zzpj.controller.dto.mok;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;

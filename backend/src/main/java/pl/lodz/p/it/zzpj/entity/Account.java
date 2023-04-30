@@ -12,9 +12,12 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import pl.lodz.p.it.zzpj.model.Game;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -42,6 +45,8 @@ public class Account implements UserDetails {
 
     @NotNull
     private Role role = Role.PLAYER;
+
+    private List<Game> games = new ArrayList<>();
 
     public Account(String username, String email, String password) {
         this.username = username;

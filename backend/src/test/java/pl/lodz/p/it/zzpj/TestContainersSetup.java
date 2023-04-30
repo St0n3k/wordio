@@ -1,8 +1,5 @@
 package pl.lodz.p.it.zzpj;
 
-import static java.net.HttpURLConnection.HTTP_OK;
-import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
-
 import org.junit.jupiter.api.BeforeAll;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -13,6 +10,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
+import static java.net.HttpURLConnection.HTTP_OK;
+import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
+
 import java.io.IOException;
 import java.time.Duration;
 
@@ -21,9 +21,29 @@ import java.time.Duration;
 public abstract class TestContainersSetup {
     private static GenericContainer<MongoDBContainer> mongoContainer;
 
+    private static GenericContainer<RedisContainer> redisContainer;
+
     @DynamicPropertySource
-    static void registerMongoDBProperties(DynamicPropertyRegistry registry) {
+    static void registerMongoDBAndRedisProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.port", MongoDBContainer::getMongoMappedPort);
+        registry.add("spring.data.redis.port", RedisContainer::getRedisMappedPort);
+    }
+
+    @BeforeAll
+    public static void setup() throws IOException, InterruptedException {
+        mongoContainer = new MongoDBContainer();
+        mongoContainer.start();
+        mongoContainer.execInContainer(
+            "/usr/bin/mongoimport",
+            "--collection=account",
+            "--db=wordio",
+            "--username=word-io",
+            "--password=word-io-pwd",
+            "--authenticationDatabase=admin",
+            "./accounts.json");
+
+        redisContainer = new RedisContainer();
+        redisContainer.start();
     }
 
     private static class MongoDBContainer extends GenericContainer<MongoDBContainer> {
@@ -45,17 +65,14 @@ public abstract class TestContainersSetup {
         }
     }
 
-    @BeforeAll
-    public static void setup() throws IOException, InterruptedException {
-        mongoContainer = new MongoDBContainer();
-        mongoContainer.start();
-        mongoContainer.execInContainer(
-            "/usr/bin/mongoimport",
-            "--collection=account",
-            "--db=wordio",
-            "--username=word-io",
-            "--password=word-io-pwd",
-            "--authenticationDatabase=admin",
-            "./accounts.json");
+    private static class RedisContainer extends GenericContainer<RedisContainer> {
+        public RedisContainer() {
+            super(DockerImageName.parse("redis/redis-stack:latest"));
+            this.withExposedPorts(6379);
+        }
+
+        private static Integer getRedisMappedPort() {
+            return redisContainer.getMappedPort(6379);
+        }
     }
 }

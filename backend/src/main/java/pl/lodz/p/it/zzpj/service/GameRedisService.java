@@ -13,7 +13,9 @@ import pl.lodz.p.it.zzpj.controller.dto.game.response.FinishGameResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.FinishNotifyOthersResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.JoinGameResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.StartGameResponseDTO;
+import pl.lodz.p.it.zzpj.exception.game.GameAlreadyStartedException;
 import pl.lodz.p.it.zzpj.exception.game.GameNotFoundException;
+import pl.lodz.p.it.zzpj.exception.game.GameNotStartedException;
 import pl.lodz.p.it.zzpj.exception.game.NotAuthorStartGameException;
 import pl.lodz.p.it.zzpj.exception.game.NotEnoughPlayersException;
 import pl.lodz.p.it.zzpj.model.Game;
@@ -51,9 +53,12 @@ public class GameRedisService {
         return new UuidDTO(id);
     }
 
-    public void joinGame(UUID gameID, String player) throws GameNotFoundException {
+    public void joinGame(UUID gameID, String player) throws GameNotFoundException, GameAlreadyStartedException {
         try {
             semaphoreMap.get(gameID).acquireUninterruptibly();
+            if (gameRedisRepository.getGame(gameID).isStarted()) {
+                throw new GameAlreadyStartedException();
+            }
             int counter = 1;
             while (gameRedisRepository.getGame(gameID).getPlayers().contains(player)) {
                 player = player + "(" + counter + ")";
@@ -71,10 +76,14 @@ public class GameRedisService {
     }
 
     public void startGame(UUID gameID, String playerName)
-        throws GameNotFoundException, NotEnoughPlayersException, NotAuthorStartGameException {
+        throws GameNotFoundException, NotEnoughPlayersException, NotAuthorStartGameException,
+        GameAlreadyStartedException {
         Game game = gameRedisRepository.getGame(gameID);
         if (!Objects.equals(game.getAuthorName(), playerName)) {
             throw new NotAuthorStartGameException();
+        }
+        if (game.isStarted()) {
+            throw new GameAlreadyStartedException();
         }
         if (game.getPlayers().size() < 2) {
             throw new NotEnoughPlayersException();
@@ -82,15 +91,20 @@ public class GameRedisService {
         template.convertAndSend("/topic/game/" + gameID,
             new StartGameResponseDTO(game.getCategories(),
                 game.getRounds().peek().getLetter()), getActionsHeader("start"));
+        game.setStarted(true);
+        gameRedisRepository.putGame(game);
         createTimerTask(gameID, game.getMaxRoundLenght());
     }
 
-    public void finishGame(UUID gameID) throws GameNotFoundException {
+    public void finishGame(UUID gameID) throws GameNotFoundException, GameNotStartedException {
         try {
             if (semaphoreMap.get(gameID).tryAcquire()) {
+                Game game = gameRedisRepository.getGame(gameID);
+                if (!game.isStarted()) {
+                    throw new GameNotStartedException();
+                }
                 template.convertAndSend("/topic/game/" + gameID, new FinishNotifyOthersResponseDTO(),
                     getActionsHeader("finish-notify"));
-                Game game = gameRedisRepository.getGame(gameID);
                 createTimerTask(gameID, game.getCountdownTime());
                 semaphoreMap.get(gameID).release();
             }
@@ -99,16 +113,19 @@ public class GameRedisService {
         }
     }
 
-    public void sendAnswers(AnswerRequestDTO answerRequestDTO) throws GameNotFoundException {
-        UUID gameID = UUID.fromString(answerRequestDTO.getId());
+    public void sendAnswers(AnswerRequestDTO answerRequestDTO, UUID gameID)
+        throws GameNotFoundException, GameNotStartedException {
         try {
             semaphoreMap.get(gameID).acquireUninterruptibly();
             Game game = gameRedisRepository.getGame(gameID);
+            if (!game.isStarted()) {
+                throw new GameNotStartedException();
+            }
             game.getRounds().peek().getAnswers().putAll(answerRequestDTO.getAnswers());
             game = gameRedisRepository.putGame(game);
             Round round = game.getRounds().peek();
             if (round.getAnswers().size() == game.getPlayers().size()) {
-                template.convertAndSend("/topic/game/" + answerRequestDTO.getId(),
+                template.convertAndSend("/topic/game/" + gameID,
                     new AnswerResponseDTO(round.getAnswers()),
                     getActionsHeader("display-answers"));
             }

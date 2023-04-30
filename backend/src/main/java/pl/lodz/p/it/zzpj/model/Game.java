@@ -2,6 +2,7 @@ package pl.lodz.p.it.zzpj.model;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.springframework.data.redis.core.RedisHash;
@@ -21,12 +22,13 @@ public class Game implements Serializable {
     UUID id;
     int countdownTime;
     int maxRoundLenght;
-
     Stack<Round> rounds = new Stack<>();
     Stack<Round> played = new Stack<>();
     String authorName;
     List<String> categories = new ArrayList<>();
     List<String> players = new ArrayList<>();
+    @Setter
+    private boolean started = false;
 
     public Game(int numberOfRounds, int countdownTime, int maxRoundLenght, String authorName, List<String> categories) {
         this.id = UUID.randomUUID();

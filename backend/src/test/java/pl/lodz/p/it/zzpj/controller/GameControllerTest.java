@@ -15,7 +15,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
-import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
@@ -32,12 +31,16 @@ import pl.lodz.p.it.zzpj.TestContainersSetup;
 import pl.lodz.p.it.zzpj.controller.dto.game.CreateGameDto;
 import pl.lodz.p.it.zzpj.controller.dto.game.request.AnswerRequestDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.AnswerResponseDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.response.FinishGameResponseDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.response.FinishNotifyOthersResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.JoinGameResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.StartGameResponseDTO;
 import pl.lodz.p.it.zzpj.service.GameRedisService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -49,7 +52,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 @SpringBootTest
@@ -150,75 +152,6 @@ class GameControllerTest extends TestContainersSetup {
     }
 
     @Nested
-    @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-    class WebSocketConnectionTest {
-        private static final WebSocketStompClient stompClient =
-            new WebSocketStompClient(
-                new SockJsClient(List.of(
-                    new WebSocketTransport(new StandardWebSocketClient())
-                ))
-            );
-
-        @LocalServerPort
-        private int port;
-
-        private String url;
-        private StompSession session;
-
-        @BeforeAll
-        static void setupStompClient() {
-            stompClient.setMessageConverter(new StringMessageConverter());
-        }
-
-        @AfterEach
-        void disconnect() {
-            session.disconnect();
-        }
-
-        @BeforeEach
-        void initSession() {
-            url = "ws://localhost:" + port + "/wordio";
-        }
-
-        @Test
-        void shouldConnectTest() throws InterruptedException, ExecutionException {
-            session = stompClient.connectAsync(url, new StompSessionHandlerAdapter() {
-                })
-                .get();
-
-            assertNotNull(session);
-            assertNotNull(session.getSessionId());
-
-            var blockingQueue = new ArrayBlockingQueue<>(1);
-
-            var sub = session.subscribe("/topic/game/1234", new StompFrameHandler() {
-                @Override
-                @NotNull
-                public Type getPayloadType(@NotNull StompHeaders headers) {
-                    return String.class;
-                }
-
-                @Override
-                public void handleFrame(StompHeaders headers, Object payload) {
-                    // save payload in blockingQueue so that we can retrieve it later
-                    blockingQueue.add(payload);
-                }
-            });
-
-            session.send("/game/1234", "some payload");
-
-            Object payload = blockingQueue.poll(2, TimeUnit.SECONDS);
-            assertNotNull(payload);
-
-            String message = (String) payload;
-            assertNotNull(message);
-            assertEquals("SubscriptionMessage(gameID=1234, payload='some payload', principal=null)", message);
-
-            sub.unsubscribe();
-        }
-    }
-
-    @Nested
     @WithUserDetails(USERNAME)
     @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
     class GameLogicTest {
@@ -228,6 +161,9 @@ class GameControllerTest extends TestContainersSetup {
                     new WebSocketTransport(new StandardWebSocketClient())
                 ))
             );
+        private static UUID gameID;
+        private final ArrayBlockingQueue<Object> blockingQueue1 = new ArrayBlockingQueue<>(1);
+        private final ArrayBlockingQueue<Object> blockingQueue2 = new ArrayBlockingQueue<>(1);
         @Autowired
         GameRedisService gameRedisService;
         @LocalServerPort
@@ -248,15 +184,13 @@ class GameControllerTest extends TestContainersSetup {
         }
 
         @BeforeEach
-        void initSession() {
-            url = "ws://localhost:" + port + "/wordio";
-        }
-
-        @Test
-        void shouldSubscribeAndReturnGameDetails()
+        void initializeSessionAndSubscribeTopicAndHandleMessage()
             throws Exception {
-
-            UUID id = gameRedisService.createGame(new CreateGameDto(1, 4, 2, List.of("a", "b")));
+            blockingQueue1.clear();
+            blockingQueue2.clear();
+            url = "ws://localhost:" + port + "/wordio";
+            CreateGameDto createGameDto = new CreateGameDto(1, 4, 2, List.of("a", "b"));
+            gameID = gameRedisService.createGame(createGameDto).getId();
             session1 = stompClient.connectAsync(url, new StompSessionHandlerAdapter() {
                 })
                 .get();
@@ -270,71 +204,229 @@ class GameControllerTest extends TestContainersSetup {
             assertNotNull(session2);
             assertNotNull(session2.getSessionId());
 
-
-            var blockingQueue1 = new ArrayBlockingQueue<>(1);
-            var blockingQueue2 = new ArrayBlockingQueue<>(1);
-            var sub1 = session1.subscribe("/topic/game/" + id, new StompFrameHandler() {
+            session1.subscribe("/topic/game/" + gameID, new StompFrameHandler() {
                 @Override
                 @NotNull
                 public Type getPayloadType(@NotNull StompHeaders headers) {
-                    System.out.println(headers);
                     return switch (headers.get("action").get(0)) {
                         case "join" -> JoinGameResponseDTO.class;
                         case "start" -> StartGameResponseDTO.class;
                         case "display-answers" -> AnswerResponseDTO.class;
-                        default -> String.class;
+                        case "finish" -> FinishGameResponseDTO.class;
+                        default -> FinishNotifyOthersResponseDTO.class;
                     };
                 }
 
                 @Override
                 public void handleFrame(StompHeaders headers, Object payload) {
-                    System.out.println("|SESSION1|" + headers.get("action") + "->" + payload.toString());
                     blockingQueue1.add(payload);
                 }
             });
 
-            var sub2 = session2.subscribe("/topic/game/" + id, new StompFrameHandler() {
+            session2.subscribe("/topic/game/" + gameID, new StompFrameHandler() {
                 @Override
                 @NotNull
                 public Type getPayloadType(@NotNull StompHeaders headers) {
-                    System.out.println(headers);
                     return switch (headers.get("action").get(0)) {
                         case "join" -> JoinGameResponseDTO.class;
                         case "start" -> StartGameResponseDTO.class;
                         case "display-answers" -> AnswerResponseDTO.class;
-                        default -> String.class;
+                        case "finish" -> FinishGameResponseDTO.class;
+                        default -> FinishNotifyOthersResponseDTO.class;
                     };
                 }
 
                 @Override
                 public void handleFrame(StompHeaders headers, Object payload) {
-                    System.out.println("|SESSION2|" + headers.get("action") + "->" + payload.toString());
                     blockingQueue2.add(payload);
                 }
             });
+        }
 
-            session1.send("/game/" + id + "/join", "kamillo");
-            session2.send("/game/" + id + "/join", "msocha");
-            blockingQueue1.poll(2, TimeUnit.SECONDS);
-            blockingQueue2.poll(2, TimeUnit.SECONDS);
-            blockingQueue1.poll(2, TimeUnit.SECONDS);
-            blockingQueue2.poll(2, TimeUnit.SECONDS);
-            session1.send("/game/" + id + "/start", "");
-            blockingQueue1.poll(2, TimeUnit.SECONDS);
-            blockingQueue2.poll(2, TimeUnit.SECONDS);
-            session1.send("/game/" + id + "/finish", "");
-            session2.send("/game/" + id + "/finish", "");
-            blockingQueue1.poll(2, TimeUnit.SECONDS);
-            blockingQueue2.poll(2, TimeUnit.SECONDS);
-            session1.send("/game/" + id + "/answers",
-                new AnswerRequestDTO(id.toString(),
-                    Map.of("kamillo", List.of("odp1", "odp2"))));
-            session2.send("/game/" + id + "/answers",
-                new AnswerRequestDTO(id.toString(), Map.of("msocha", List.of("odp1", "odp2"))));
-            blockingQueue1.poll(2, TimeUnit.SECONDS);
-            blockingQueue2.poll(2, TimeUnit.SECONDS);
-            System.out.println("After1: " + blockingQueue1.poll(2, TimeUnit.SECONDS));
-            System.out.println("After2: " + blockingQueue2.poll(2, TimeUnit.SECONDS));
+        @Test
+        void shouldJoinTwoPlayersWithDifferentNameAndReturnActualState()
+            throws InterruptedException {
+            session1.send("/game/" + gameID + "/join", "kamillo");
+            session2.send("/game/" + gameID + "/join", "msocha19");
+
+            Object objectSession1 = blockingQueue1.poll(2, TimeUnit.SECONDS);
+            Object objectSession2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof JoinGameResponseDTO);
+            assertTrue(objectSession2 instanceof JoinGameResponseDTO);
+            assertEquals(((JoinGameResponseDTO) objectSession1).getPlayers().size(), 1);
+            assertEquals(((JoinGameResponseDTO) objectSession2).getPlayers().size(), 1);
+
+            objectSession1 = blockingQueue1.poll(2, TimeUnit.SECONDS);
+            objectSession2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof JoinGameResponseDTO);
+            assertTrue(objectSession2 instanceof JoinGameResponseDTO);
+            assertEquals(((JoinGameResponseDTO) objectSession1).getPlayers().size(), 2);
+            assertEquals(((JoinGameResponseDTO) objectSession2).getPlayers().size(), 2);
+            assertTrue(((JoinGameResponseDTO) objectSession1).getPlayers().contains("kamillo")
+                && ((JoinGameResponseDTO) objectSession1).getPlayers().contains("msocha19"));
+            assertTrue(((JoinGameResponseDTO) objectSession2).getPlayers().contains("kamillo")
+                && ((JoinGameResponseDTO) objectSession2).getPlayers().contains("msocha19"));
+        }
+
+        @Test
+        void shouldJoinTwoPlayersWithTheSameNameAndReturnActualStateWhereNamesAreDistinguishable()
+            throws InterruptedException {
+            session1.send("/game/" + gameID + "/join", "player");
+            session2.send("/game/" + gameID + "/join", "player");
+
+            Object objectSession1 = blockingQueue1.poll(2, TimeUnit.SECONDS);
+            Object objectSession2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof JoinGameResponseDTO);
+            assertTrue(objectSession2 instanceof JoinGameResponseDTO);
+            assertEquals(((JoinGameResponseDTO) objectSession1).getPlayers().size(), 1);
+            assertEquals(((JoinGameResponseDTO) objectSession2).getPlayers().size(), 1);
+            assertTrue(((JoinGameResponseDTO) objectSession1).getPlayers().contains("player"));
+            assertTrue(((JoinGameResponseDTO) objectSession2).getPlayers().contains("player"));
+
+            objectSession1 = blockingQueue1.poll(2, TimeUnit.SECONDS);
+            objectSession2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof JoinGameResponseDTO);
+            assertTrue(objectSession2 instanceof JoinGameResponseDTO);
+            assertEquals(((JoinGameResponseDTO) objectSession1).getPlayers().size(), 2);
+            assertEquals(((JoinGameResponseDTO) objectSession2).getPlayers().size(), 2);
+            assertTrue(((JoinGameResponseDTO) objectSession1).getPlayers().contains("player")
+                && ((JoinGameResponseDTO) objectSession1).getPlayers().contains("player(1)"));
+            assertTrue(((JoinGameResponseDTO) objectSession2).getPlayers().contains("player")
+                && ((JoinGameResponseDTO) objectSession2).getPlayers().contains("player(1)"));
+        }
+
+        @Test
+        void shouldThrowGameNotFoundExceptionWhenJoiningNotExistingGame() {
+        }
+
+        @Test
+        void shouldStartGameWithTwoPlayersAndSendNotificationMessageAndEndAfterMaxRoundTime()
+            throws InterruptedException {
+            session1.send("/game/" + gameID + "/join", "player");
+            session2.send("/game/" + gameID + "/join", "kamillo");
+
+            assertNotNull(blockingQueue1.poll(2, TimeUnit.SECONDS));
+            assertNotNull(blockingQueue2.poll(2, TimeUnit.SECONDS));
+            assertNotNull(blockingQueue1.poll(2, TimeUnit.SECONDS));
+            assertNotNull(blockingQueue2.poll(2, TimeUnit.SECONDS));
+
+            session1.send("/game/" + gameID + "/start", "kamillo");
+
+            Object objectSession1 = blockingQueue1.poll(2, TimeUnit.SECONDS);
+            Object objectSession2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof StartGameResponseDTO);
+            assertTrue(objectSession2 instanceof StartGameResponseDTO);
+            assertEquals(((StartGameResponseDTO) objectSession1).getCategories().size(), 2);
+            assertEquals(((StartGameResponseDTO) objectSession2).getCategories().size(), 2);
+            assertTrue(Character.isAlphabetic(((StartGameResponseDTO) objectSession1).getLetter()));
+            assertTrue(Character.isAlphabetic(((StartGameResponseDTO) objectSession2).getLetter()));
+            assertEquals(((StartGameResponseDTO) objectSession2).getLetter(),
+                ((StartGameResponseDTO) objectSession1).getLetter());
+
+            objectSession1 = blockingQueue1.poll(5, TimeUnit.SECONDS);
+            objectSession2 = blockingQueue2.poll(5, TimeUnit.SECONDS);
+
+            assertEquals("finish", ((FinishGameResponseDTO) objectSession1).getMessage());
+            assertEquals("finish", ((FinishGameResponseDTO) objectSession2).getMessage());
+        }
+
+        @Test
+        void shouldThrowGameNotFoundExceptionWhenStartingNonExistentGame() {
+
+        }
+
+        @Test
+        void shouldThrowNotAuthorStartGameExceptionWhenStartInvokedNotByOwner() {
+
+        }
+
+        @Test
+        void shouldThrowNotEnoughPlayersExceptionWhenGameIsBeingStartedByOwer() {
+
+        }
+
+        @Test
+        void shouldFinishRoundAndEndAfterCountdownTime() throws InterruptedException {
+            session1.send("/game/" + gameID + "/join", "player");
+            session2.send("/game/" + gameID + "/join", "kamillo");
+
+            assertNotNull(blockingQueue1.poll(2, TimeUnit.SECONDS));
+            assertNotNull(blockingQueue2.poll(2, TimeUnit.SECONDS));
+            assertNotNull(blockingQueue1.poll(2, TimeUnit.SECONDS));
+            assertNotNull(blockingQueue2.poll(2, TimeUnit.SECONDS));
+
+            session1.send("/game/" + gameID + "/start", "kamillo");
+
+            assertTrue(blockingQueue1.poll(2, TimeUnit.SECONDS) instanceof StartGameResponseDTO);
+            assertTrue(blockingQueue2.poll(2, TimeUnit.SECONDS) instanceof StartGameResponseDTO);
+
+            session1.send("/game/" + gameID + "/finish", "");
+            session2.send("/game/" + gameID + "/finish", "");
+
+            Object objectSession1 = blockingQueue1.poll(2, TimeUnit.SECONDS);
+            Object objectSession2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof FinishNotifyOthersResponseDTO);
+            assertTrue(objectSession2 instanceof FinishNotifyOthersResponseDTO);
+            assertEquals(((FinishNotifyOthersResponseDTO) objectSession1).getMessage(), "finish-notify");
+            assertEquals(((FinishNotifyOthersResponseDTO) objectSession2).getMessage(), "finish-notify");
+
+            objectSession1 = blockingQueue1.poll(3, TimeUnit.SECONDS);
+            objectSession2 = blockingQueue2.poll(3, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof FinishGameResponseDTO);
+            assertTrue(objectSession2 instanceof FinishGameResponseDTO);
+            assertEquals(((FinishGameResponseDTO) objectSession1).getMessage(), "finish");
+            assertEquals(((FinishGameResponseDTO) objectSession2).getMessage(), "finish");
+
+            objectSession1 = blockingQueue1.poll(4, TimeUnit.SECONDS);
+            objectSession2 = blockingQueue2.poll(4, TimeUnit.SECONDS);
+
+            assertNull(objectSession1);
+            assertNull(objectSession2);
+        }
+
+        @Test
+        void shouldThrowGameNotFoundExceptionWhenFinishOnNonExistentGame() {
+
+        }
+
+        @Test
+        void shouldSendBothAnswersButInvokeDisplayAnswersAfterEveryPlayerSend() throws InterruptedException {
+            session1.send("/game/" + gameID + "/join", "msocha19");
+            session2.send("/game/" + gameID + "/join", "kamillo");
+
+            assertNotNull(blockingQueue1.poll(2, TimeUnit.SECONDS));
+            assertNotNull(blockingQueue2.poll(2, TimeUnit.SECONDS));
+            assertNotNull(blockingQueue1.poll(2, TimeUnit.SECONDS));
+            assertNotNull(blockingQueue2.poll(2, TimeUnit.SECONDS));
+            
+            AnswerRequestDTO answerRequestDTO1 =
+                new AnswerRequestDTO(gameID.toString(), Map.of("kamillo", List.of("a", "b")));
+            AnswerRequestDTO answerRequestDTO2 =
+                new AnswerRequestDTO(gameID.toString(), Map.of("msocha19", List.of("a", "b")));
+            session1.send("/game/" + gameID + "/answers", answerRequestDTO1);
+            session2.send("/game/" + gameID + "/answers", answerRequestDTO2);
+
+            Object objectSession1 = blockingQueue1.poll(2, TimeUnit.SECONDS);
+            Object objectSession2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof AnswerResponseDTO);
+            assertTrue(objectSession2 instanceof AnswerResponseDTO);
+            assertEquals(((AnswerResponseDTO) objectSession1).getAnswers().size(), 2);
+            assertEquals(((AnswerResponseDTO) objectSession2).getAnswers().size(), 2);
+
+            assertNull(blockingQueue1.poll(2, TimeUnit.SECONDS));
+            assertNull(blockingQueue2.poll(2, TimeUnit.SECONDS));
+        }
+
+        @Test
+        void shouldThrowGameNotFoundExceptionWhenSendingAnswersToNonExistentGame() {
         }
     }
 }

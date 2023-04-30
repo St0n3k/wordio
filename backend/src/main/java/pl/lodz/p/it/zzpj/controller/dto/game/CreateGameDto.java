@@ -1,4 +1,4 @@
-package pl.lodz.p.it.zzpj.controller.dto;
+package pl.lodz.p.it.zzpj.controller.dto.game;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;

@@ -1,12 +1,5 @@
 package pl.lodz.p.it.zzpj.controller;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
@@ -21,6 +14,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
+import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
@@ -35,11 +29,25 @@ import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.lodz.p.it.zzpj.TestContainersSetup;
-import pl.lodz.p.it.zzpj.controller.dto.CreateGameDto;
+import pl.lodz.p.it.zzpj.controller.dto.game.CreateGameDto;
+import pl.lodz.p.it.zzpj.controller.dto.game.request.AnswerRequestDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.response.AnswerResponseDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.response.JoinGameResponseDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.response.StartGameResponseDTO;
+import pl.lodz.p.it.zzpj.service.GameRedisService;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -207,6 +215,126 @@ class GameControllerTest extends TestContainersSetup {
             assertEquals("SubscriptionMessage(gameID=1234, payload='some payload', principal=null)", message);
 
             sub.unsubscribe();
+        }
+    }
+
+    @Nested
+    @WithUserDetails(USERNAME)
+    @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+    class GameLogicTest {
+        private static final WebSocketStompClient stompClient =
+            new WebSocketStompClient(
+                new SockJsClient(List.of(
+                    new WebSocketTransport(new StandardWebSocketClient())
+                ))
+            );
+        @Autowired
+        GameRedisService gameRedisService;
+        @LocalServerPort
+        private int port;
+        private String url;
+        private StompSession session1;
+        private StompSession session2;
+
+        @BeforeAll
+        static void setupStompClient() {
+            stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+        }
+
+        @AfterEach
+        void disconnect() {
+            session1.disconnect();
+            session2.disconnect();
+        }
+
+        @BeforeEach
+        void initSession() {
+            url = "ws://localhost:" + port + "/wordio";
+        }
+
+        @Test
+        void shouldSubscribeAndReturnGameDetails()
+            throws Exception {
+
+            UUID id = gameRedisService.createGame(new CreateGameDto(1, 4, 2, List.of("a", "b")));
+            session1 = stompClient.connectAsync(url, new StompSessionHandlerAdapter() {
+                })
+                .get();
+
+            session2 = stompClient.connectAsync(url, new StompSessionHandlerAdapter() {
+                })
+                .get();
+
+            assertNotNull(session1);
+            assertNotNull(session1.getSessionId());
+            assertNotNull(session2);
+            assertNotNull(session2.getSessionId());
+
+
+            var blockingQueue1 = new ArrayBlockingQueue<>(1);
+            var blockingQueue2 = new ArrayBlockingQueue<>(1);
+            var sub1 = session1.subscribe("/topic/game/" + id, new StompFrameHandler() {
+                @Override
+                @NotNull
+                public Type getPayloadType(@NotNull StompHeaders headers) {
+                    System.out.println(headers);
+                    return switch (headers.get("action").get(0)) {
+                        case "join" -> JoinGameResponseDTO.class;
+                        case "start" -> StartGameResponseDTO.class;
+                        case "display-answers" -> AnswerResponseDTO.class;
+                        default -> String.class;
+                    };
+                }
+
+                @Override
+                public void handleFrame(StompHeaders headers, Object payload) {
+                    System.out.println("|SESSION1|" + headers.get("action") + "->" + payload.toString());
+                    blockingQueue1.add(payload);
+                }
+            });
+
+            var sub2 = session2.subscribe("/topic/game/" + id, new StompFrameHandler() {
+                @Override
+                @NotNull
+                public Type getPayloadType(@NotNull StompHeaders headers) {
+                    System.out.println(headers);
+                    return switch (headers.get("action").get(0)) {
+                        case "join" -> JoinGameResponseDTO.class;
+                        case "start" -> StartGameResponseDTO.class;
+                        case "display-answers" -> AnswerResponseDTO.class;
+                        default -> String.class;
+                    };
+                }
+
+                @Override
+                public void handleFrame(StompHeaders headers, Object payload) {
+                    System.out.println("|SESSION2|" + headers.get("action") + "->" + payload.toString());
+                    blockingQueue2.add(payload);
+                }
+            });
+
+            session1.send("/game/" + id + "/join", "kamillo");
+            session2.send("/game/" + id + "/join", "msocha");
+            blockingQueue1.poll(2, TimeUnit.SECONDS);
+            blockingQueue2.poll(2, TimeUnit.SECONDS);
+            blockingQueue1.poll(2, TimeUnit.SECONDS);
+            blockingQueue2.poll(2, TimeUnit.SECONDS);
+            session1.send("/game/" + id + "/start", "");
+            blockingQueue1.poll(2, TimeUnit.SECONDS);
+            blockingQueue2.poll(2, TimeUnit.SECONDS);
+            session1.send("/game/" + id + "/finish", "");
+            session2.send("/game/" + id + "/finish", "");
+            blockingQueue1.poll(2, TimeUnit.SECONDS);
+            blockingQueue2.poll(2, TimeUnit.SECONDS);
+            session1.send("/game/" + id + "/answers",
+                new AnswerRequestDTO(id.toString(),
+                    Map.of("kamillo", List.of("odp1", "odp2"))));
+            session2.send("/game/" + id + "/answers",
+                new AnswerRequestDTO(id.toString(), Map.of("msocha", List.of("odp1", "odp2"))));
+            blockingQueue1.poll(2, TimeUnit.SECONDS);
+            blockingQueue2.poll(2, TimeUnit.SECONDS);
+            System.out.println("After1: " + blockingQueue1.poll(2, TimeUnit.SECONDS));
+            System.out.println("After2: " + blockingQueue2.poll(2, TimeUnit.SECONDS));
         }
     }
 }

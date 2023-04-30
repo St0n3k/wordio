@@ -12,5 +12,22 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: word-io-pwd
     volumes:
       - wordio:/data/db
+    networks:
+      - wordionet  
+      
+  redis-stack:
+    image: redis/redis-stack:latest
+    container_name: redis_word-io
+    ports:
+      - "8001:8001"
+      - "6379:6379"
+    volumes:
+      - wordio:/bitnami/redis/data
+    networks:
+      - wordionet
+      
 volumes:
   wordio:
+
+networks:
+  wordionet: {}

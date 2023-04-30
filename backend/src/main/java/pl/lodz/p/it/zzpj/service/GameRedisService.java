@@ -5,12 +5,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import pl.lodz.p.it.zzpj.controller.dto.UuidDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.CreateGameDto;
 import pl.lodz.p.it.zzpj.controller.dto.game.request.AnswerRequestDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.AnswerResponseDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.response.FinishGameResponseDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.response.FinishNotifyOthersResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.JoinGameResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.StartGameResponseDTO;
 import pl.lodz.p.it.zzpj.exception.game.GameNotFoundException;
+import pl.lodz.p.it.zzpj.exception.game.NotAuthorStartGameException;
+import pl.lodz.p.it.zzpj.exception.game.NotEnoughPlayersException;
 import pl.lodz.p.it.zzpj.model.Game;
 import pl.lodz.p.it.zzpj.model.Round;
 import pl.lodz.p.it.zzpj.repository.GameRedisRepository;
@@ -19,6 +24,7 @@ import java.util.EmptyStackException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
@@ -28,13 +34,12 @@ import java.util.concurrent.Semaphore;
 @RequiredArgsConstructor
 public class GameRedisService {
     private final SimpMessagingTemplate template;
-
     private final Map<UUID, Semaphore> semaphoreMap = new HashMap<>();
     private final Map<UUID, TimerTask> timers = new HashMap<>();
     @Autowired
     private GameRedisRepository gameRedisRepository;
 
-    public UUID createGame(CreateGameDto createGameDto) {
+    public UuidDTO createGame(CreateGameDto createGameDto) {
         UUID id = gameRedisRepository.putGame(
             new Game(
                 createGameDto.numberOfRounds(),
@@ -43,54 +48,74 @@ public class GameRedisService {
                 SecurityContextHolder.getContext().getAuthentication().getName(),
                 createGameDto.categories())).getId();
         semaphoreMap.put(id, new Semaphore(1));
-        return id;
+        return new UuidDTO(id);
     }
 
     public void joinGame(UUID gameID, String player) throws GameNotFoundException {
-        semaphoreMap.get(gameID).acquireUninterruptibly();
-        int counter = 1;
-        while (gameRedisRepository.getGame(gameID).getPlayers().contains(player)) {
-            player = player + "(" + counter + ")";
-            counter++;
+        try {
+            semaphoreMap.get(gameID).acquireUninterruptibly();
+            int counter = 1;
+            while (gameRedisRepository.getGame(gameID).getPlayers().contains(player)) {
+                player = player + "(" + counter + ")";
+                counter++;
+            }
+            List<String> players = addPlayer(gameID, player);
+
+            template.convertAndSend("/topic/game/" + gameID,
+                new JoinGameResponseDTO(players),
+                getActionsHeader("join"));
+            semaphoreMap.get(gameID).release();
+        } catch (NullPointerException npe) {
+            throw new GameNotFoundException();
         }
-        List<String> players = addPlayer(gameID, player);
-        template.convertAndSend("/topic/game/" + gameID,
-            new JoinGameResponseDTO(players),
-            getActionsHeader("join"));
-        semaphoreMap.get(gameID).release();
     }
 
-    public void startGame(UUID gameID) throws GameNotFoundException {
+    public void startGame(UUID gameID, String playerName)
+        throws GameNotFoundException, NotEnoughPlayersException, NotAuthorStartGameException {
         Game game = gameRedisRepository.getGame(gameID);
+        if (!Objects.equals(game.getAuthorName(), playerName)) {
+            throw new NotAuthorStartGameException();
+        }
+        if (game.getPlayers().size() < 2) {
+            throw new NotEnoughPlayersException();
+        }
         template.convertAndSend("/topic/game/" + gameID,
             new StartGameResponseDTO(game.getCategories(),
                 game.getRounds().peek().getLetter()), getActionsHeader("start"));
         createTimerTask(gameID, game.getMaxRoundLenght());
-
     }
 
     public void finishGame(UUID gameID) throws GameNotFoundException {
-        if (semaphoreMap.get(gameID).tryAcquire()) {
-            template.convertAndSend("/topic/game/" + gameID, "finish-notify", getActionsHeader("finish-notify"));
-            Game game = gameRedisRepository.getGame(gameID);
-            createTimerTask(gameID, game.getCountdownTime());
-            semaphoreMap.get(gameID).release();
+        try {
+            if (semaphoreMap.get(gameID).tryAcquire()) {
+                template.convertAndSend("/topic/game/" + gameID, new FinishNotifyOthersResponseDTO(),
+                    getActionsHeader("finish-notify"));
+                Game game = gameRedisRepository.getGame(gameID);
+                createTimerTask(gameID, game.getCountdownTime());
+                semaphoreMap.get(gameID).release();
+            }
+        } catch (NullPointerException npe) {
+            throw new GameNotFoundException();
         }
     }
 
     public void sendAnswers(AnswerRequestDTO answerRequestDTO) throws GameNotFoundException {
         UUID gameID = UUID.fromString(answerRequestDTO.getId());
-        semaphoreMap.get(gameID).acquireUninterruptibly();
-        Game game = gameRedisRepository.getGame(gameID);
-        Round round = game.getRounds().peek();
-        game.getRounds().peek().getAnswers().putAll(answerRequestDTO.getAnswers());
-        gameRedisRepository.putGame(game);
-        if (round.getAnswers().size() == game.getPlayers().size()) {
-            template.convertAndSend("/topic/game/" + answerRequestDTO.getId(),
-                new AnswerResponseDTO(round.getAnswers()),
-                getActionsHeader("display-answers"));
+        try {
+            semaphoreMap.get(gameID).acquireUninterruptibly();
+            Game game = gameRedisRepository.getGame(gameID);
+            game.getRounds().peek().getAnswers().putAll(answerRequestDTO.getAnswers());
+            game = gameRedisRepository.putGame(game);
+            Round round = game.getRounds().peek();
+            if (round.getAnswers().size() == game.getPlayers().size()) {
+                template.convertAndSend("/topic/game/" + answerRequestDTO.getId(),
+                    new AnswerResponseDTO(round.getAnswers()),
+                    getActionsHeader("display-answers"));
+            }
+            semaphoreMap.get(gameID).release();
+        } catch (NullPointerException npe) {
+            throw new GameNotFoundException();
         }
-        semaphoreMap.get(gameID).release();
     }
 
     public void endRound(UUID gameID) throws GameNotFoundException {
@@ -131,7 +156,8 @@ public class GameRedisService {
         timers.put(gameID, new TimerTask() {
             @Override
             public void run() {
-                template.convertAndSend("/topic/game/" + gameID, "finish", getActionsHeader("finish"));
+                template.convertAndSend("/topic/game/" + gameID, new FinishGameResponseDTO(),
+                    getActionsHeader("finish"));
             }
         });
         new Timer().schedule(timers.get(gameID), length * 1000L);

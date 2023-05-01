@@ -24,6 +24,8 @@ import pl.lodz.p.it.zzpj.exception.game.GameNotFoundException;
 import pl.lodz.p.it.zzpj.exception.game.GameNotStartedException;
 import pl.lodz.p.it.zzpj.exception.game.NotAuthorStartGameException;
 import pl.lodz.p.it.zzpj.exception.game.NotEnoughPlayersException;
+import pl.lodz.p.it.zzpj.exception.game.UserNotFoundInGameException;
+import pl.lodz.p.it.zzpj.exception.game.UsernameInUseException;
 import pl.lodz.p.it.zzpj.service.GameRedisService;
 
 import java.util.UUID;
@@ -43,25 +45,25 @@ public class GameController {
 
     @MessageMapping("/{gameID}/join")
     public void join(@DestinationVariable UUID gameID, @NotBlank @Size(min = 2) @Payload String player)
-        throws GameNotFoundException, GameAlreadyStartedException {
+        throws GameNotFoundException, GameAlreadyStartedException, UsernameInUseException {
         gameService.joinGame(gameID, player);
     }
 
     @MessageMapping("/{gameID}/start")
     public void startGame(@DestinationVariable UUID gameID, @NotBlank @Size(min = 2) @Payload String player)
         throws GameNotFoundException, NotEnoughPlayersException, NotAuthorStartGameException,
-        GameAlreadyStartedException {
-        gameService.startGame(gameID, player);
+        GameAlreadyStartedException, UserNotFoundInGameException {
+        gameService.start(gameID, player);
     }
 
     @MessageMapping("/{gameID}/finish")
     public void finishRound(@DestinationVariable UUID gameID) throws GameNotFoundException, GameNotStartedException {
-        gameService.finishGame(gameID);
+        gameService.finishRound(gameID);
     }
 
     @MessageMapping("/{gameID}/answers")
     public void sendAnswer(@Valid @Payload AnswerRequestDTO answerDTO, @DestinationVariable UUID gameID)
-        throws GameNotFoundException, GameNotStartedException {
+        throws GameNotFoundException, GameNotStartedException, UserNotFoundInGameException {
         gameService.sendAnswers(answerDTO, gameID);
     }
 

@@ -1,4 +1,4 @@
-package pl.lodz.p.it.zzpj.controller.dto.mok;
+package pl.lodz.p.it.zzpj.controller.dto.account;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -8,10 +8,10 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ChangePasswordDTO {
+public class LoginDTO {
     @NotNull
-    private String oldPassword;
+    private String username;
 
     @NotNull
-    private String newPassword;
+    private String password;
 }

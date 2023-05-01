@@ -1,7 +1,6 @@
 package pl.lodz.p.it.zzpj.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -18,15 +17,17 @@ import pl.lodz.p.it.zzpj.exception.game.GameNotFoundException;
 import pl.lodz.p.it.zzpj.exception.game.GameNotStartedException;
 import pl.lodz.p.it.zzpj.exception.game.NotAuthorStartGameException;
 import pl.lodz.p.it.zzpj.exception.game.NotEnoughPlayersException;
+import pl.lodz.p.it.zzpj.exception.game.UserNotFoundInGameException;
+import pl.lodz.p.it.zzpj.exception.game.UsernameInUseException;
 import pl.lodz.p.it.zzpj.model.Game;
 import pl.lodz.p.it.zzpj.model.Round;
 import pl.lodz.p.it.zzpj.repository.GameRedisRepository;
 
-import java.util.EmptyStackException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
@@ -38,8 +39,7 @@ public class GameRedisService {
     private final SimpMessagingTemplate template;
     private final Map<UUID, Semaphore> semaphoreMap = new HashMap<>();
     private final Map<UUID, TimerTask> timers = new HashMap<>();
-    @Autowired
-    private GameRedisRepository gameRedisRepository;
+    private final GameRedisRepository gameRedisRepository;
 
     public UuidDTO createGame(CreateGameDto createGameDto) {
         UUID id = gameRedisRepository.putGame(
@@ -53,16 +53,15 @@ public class GameRedisService {
         return new UuidDTO(id);
     }
 
-    public void joinGame(UUID gameID, String player) throws GameNotFoundException, GameAlreadyStartedException {
+    public void joinGame(UUID gameID, String player)
+        throws GameNotFoundException, GameAlreadyStartedException, UsernameInUseException {
         try {
             semaphoreMap.get(gameID).acquireUninterruptibly();
             if (gameRedisRepository.getGame(gameID).isStarted()) {
                 throw new GameAlreadyStartedException();
             }
-            int counter = 1;
-            while (gameRedisRepository.getGame(gameID).getPlayers().contains(player)) {
-                player = player + "(" + counter + ")";
-                counter++;
+            if (gameRedisRepository.getGame(gameID).getPlayers().contains(player)) {
+                throw new UsernameInUseException();
             }
             List<String> players = addPlayer(gameID, player);
 
@@ -75,10 +74,13 @@ public class GameRedisService {
         }
     }
 
-    public void startGame(UUID gameID, String playerName)
+    public void start(UUID gameID, String playerName)
         throws GameNotFoundException, NotEnoughPlayersException, NotAuthorStartGameException,
-        GameAlreadyStartedException {
+        GameAlreadyStartedException, UserNotFoundInGameException {
         Game game = gameRedisRepository.getGame(gameID);
+        if (!game.getPlayers().contains(playerName)) {
+            throw new UserNotFoundInGameException();
+        }
         if (!Objects.equals(game.getAuthorName(), playerName)) {
             throw new NotAuthorStartGameException();
         }
@@ -96,7 +98,7 @@ public class GameRedisService {
         createTimerTask(gameID, game.getMaxRoundLenght());
     }
 
-    public void finishGame(UUID gameID) throws GameNotFoundException, GameNotStartedException {
+    public void finishRound(UUID gameID) throws GameNotFoundException, GameNotStartedException {
         try {
             if (semaphoreMap.get(gameID).tryAcquire()) {
                 Game game = gameRedisRepository.getGame(gameID);
@@ -114,10 +116,14 @@ public class GameRedisService {
     }
 
     public void sendAnswers(AnswerRequestDTO answerRequestDTO, UUID gameID)
-        throws GameNotFoundException, GameNotStartedException {
+        throws GameNotFoundException, GameNotStartedException, UserNotFoundInGameException {
         try {
             semaphoreMap.get(gameID).acquireUninterruptibly();
+            Set<String> username = answerRequestDTO.getAnswers().keySet();
             Game game = gameRedisRepository.getGame(gameID);
+            if (!game.getPlayers().contains(username.iterator().next())) {
+                throw new UserNotFoundInGameException();
+            }
             if (!game.isStarted()) {
                 throw new GameNotStartedException();
             }
@@ -132,17 +138,6 @@ public class GameRedisService {
             semaphoreMap.get(gameID).release();
         } catch (NullPointerException npe) {
             throw new GameNotFoundException();
-        }
-    }
-
-    public void endRound(UUID gameID) throws GameNotFoundException {
-        try {
-            popRound(gameID);
-            //TO SIE ZACZYNA KOLEJNA RUNDA
-        } catch (EmptyStackException e) {
-            //TO SIE GRA KONCZY
-            throw new RuntimeException();
-            //To to do wywalenia, PMD krzyczal ze nie moze byc puste
         }
     }
 

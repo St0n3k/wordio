@@ -7,6 +7,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 public class GameNotFoundException extends Exception {
 
     public GameNotFoundException() {
-        super("GameNotFound");
+        super("game.not.found");
     }
 }

@@ -1,4 +1,4 @@
-package pl.lodz.p.it.zzpj.controller.dto.mok;
+package pl.lodz.p.it.zzpj.controller.dto.account;
 
 
 import jakarta.validation.constraints.Email;

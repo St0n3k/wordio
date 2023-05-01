@@ -1,10 +1,9 @@
 package pl.lodz.p.it.zzpj.model;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.springframework.data.redis.core.RedisHash;
 
 import java.io.Serializable;
@@ -17,16 +16,19 @@ import java.util.UUID;
 @Getter
 @NoArgsConstructor
 @RedisHash("Game")
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Game implements Serializable {
 
-    UUID id;
-    int countdownTime;
-    int maxRoundLenght;
-    Stack<Round> rounds = new Stack<>();
-    Stack<Round> played = new Stack<>();
-    String authorName;
-    List<String> categories = new ArrayList<>();
-    List<String> players = new ArrayList<>();
+    private final Stack<Round> rounds = new Stack<>();
+    private final Stack<Round> played = new Stack<>();
+    private final List<String> players = new ArrayList<>();
+    private List<String> categories = new ArrayList<>();
+    @EqualsAndHashCode.Include
+    private UUID id;
+    private int countdownTime;
+    private int maxRoundLenght;
+    private String authorName;
+
     @Setter
     private boolean started = false;
 
@@ -43,25 +45,5 @@ public class Game implements Serializable {
             rounds.push(new Round(letter));
             letters = letters.replace(String.valueOf(letter), "");
         }
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-
-        Game game = (Game) o;
-
-        return new EqualsBuilder().append(id, game.id).isEquals();
-    }
-
-    @Override
-    public int hashCode() {
-        return new HashCodeBuilder(17, 37).append(id).toHashCode();
     }
 }

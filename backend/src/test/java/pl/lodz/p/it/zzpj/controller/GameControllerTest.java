@@ -1,5 +1,14 @@
 package pl.lodz.p.it.zzpj.controller;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
@@ -37,15 +46,6 @@ import pl.lodz.p.it.zzpj.controller.dto.game.response.FinishNotifyOthersResponse
 import pl.lodz.p.it.zzpj.controller.dto.game.response.JoinGameResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.StartGameResponseDTO;
 import pl.lodz.p.it.zzpj.service.GameRedisService;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.lang.reflect.Type;
 import java.util.Arrays;
@@ -296,14 +296,12 @@ class GameControllerTest extends TestContainersSetup {
         }
 
         @Test
-        void shouldJoinTwoPlayersWithTheSameNameAndReturnActualStateWhereNamesAreDistinguishable()
+        void shouldThrowUsernameInUseExceptionWhenJoinTwoPlayersWithTheSameName()
             throws InterruptedException {
             session1.send("/game/" + gameID + "/join", "player");
-            session2.send("/game/" + gameID + "/join", "player");
 
             Object objectSession1 = blockingQueue1.poll(2, TimeUnit.SECONDS);
             Object objectSession2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
-
             assertTrue(objectSession1 instanceof JoinGameResponseDTO);
             assertTrue(objectSession2 instanceof JoinGameResponseDTO);
             assertEquals(((JoinGameResponseDTO) objectSession1).getPlayers().size(), 1);
@@ -311,17 +309,14 @@ class GameControllerTest extends TestContainersSetup {
             assertTrue(((JoinGameResponseDTO) objectSession1).getPlayers().contains("player"));
             assertTrue(((JoinGameResponseDTO) objectSession2).getPlayers().contains("player"));
 
+            session2.send("/game/" + gameID + "/join", "player");
+
             objectSession1 = blockingQueue1.poll(2, TimeUnit.SECONDS);
             objectSession2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
 
-            assertTrue(objectSession1 instanceof JoinGameResponseDTO);
-            assertTrue(objectSession2 instanceof JoinGameResponseDTO);
-            assertEquals(((JoinGameResponseDTO) objectSession1).getPlayers().size(), 2);
-            assertEquals(((JoinGameResponseDTO) objectSession2).getPlayers().size(), 2);
-            assertTrue(((JoinGameResponseDTO) objectSession1).getPlayers().contains("player")
-                && ((JoinGameResponseDTO) objectSession1).getPlayers().contains("player(1)"));
-            assertTrue(((JoinGameResponseDTO) objectSession2).getPlayers().contains("player")
-                && ((JoinGameResponseDTO) objectSession2).getPlayers().contains("player(1)"));
+            assertTrue(objectSession2 instanceof ExceptionResponseDTO);
+            assertNull(objectSession1);
+            assertEquals(((ExceptionResponseDTO) objectSession2).getExceptionMessage(), "username.in.use");
         }
 
         @Test
@@ -329,13 +324,13 @@ class GameControllerTest extends TestContainersSetup {
             session1.send("/game/" + UUID.randomUUID() + "/join", "player");
             Object object = blockingQueue1.poll(2, TimeUnit.SECONDS);
             assertTrue(object instanceof ExceptionResponseDTO);
-            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "GameNotFound");
+            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "game.not.found");
         }
 
         @Test
         void shouldThrowGameAlreadyStartedExceptionWhenJoiningOngoingGame() throws InterruptedException {
-            session1.send("/game/" + gameID + "/join", "player");
-            session2.send("/game/" + gameID + "/join", "player");
+            session1.send("/game/" + gameID + "/join", "kamillo");
+            session2.send("/game/" + gameID + "/join", "msocha");
             blockingQueue1.poll(2, TimeUnit.SECONDS);
             blockingQueue2.poll(2, TimeUnit.SECONDS);
             blockingQueue1.poll(2, TimeUnit.SECONDS);
@@ -346,7 +341,7 @@ class GameControllerTest extends TestContainersSetup {
             session1.send("/game/" + gameID + "/join", "player2");
             Object object = blockingQueue1.poll(2, TimeUnit.SECONDS);
             assertTrue(object instanceof ExceptionResponseDTO);
-            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "GameAlreadyStarted");
+            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "game.already.started");
             object = blockingQueue2.poll(2, TimeUnit.SECONDS);
             assertNull(object);
         }
@@ -388,35 +383,41 @@ class GameControllerTest extends TestContainersSetup {
             session1.send("/game/" + UUID.randomUUID() + "/start", "kamillo");
             Object object = blockingQueue1.poll(2, TimeUnit.SECONDS);
             assertTrue(object instanceof ExceptionResponseDTO);
-            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "GameNotFound");
+            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "game.not.found");
             Object object2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
             assertNull(object2);
         }
 
         @Test
         void shouldThrowNotAuthorStartGameExceptionWhenStartInvokedNotByOwner() throws InterruptedException {
-            session1.send("/game/" + gameID + "/start", "player");
+            session1.send("/game/" + gameID + "/join", "msocha");
+            blockingQueue1.poll(2, TimeUnit.SECONDS);
+            blockingQueue2.poll(2, TimeUnit.SECONDS);
+            session1.send("/game/" + gameID + "/start", "msocha");
             Object object = blockingQueue1.poll(2, TimeUnit.SECONDS);
             assertTrue(object instanceof ExceptionResponseDTO);
-            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "NotAuthorStartGame");
+            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "not.author.started");
             Object object2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
             assertNull(object2);
         }
 
         @Test
         void shouldThrowNotEnoughPlayersExceptionWhenGameIsBeingStartedByOwer() throws InterruptedException {
+            session1.send("/game/" + gameID + "/join", "kamillo");
+            blockingQueue1.poll(2, TimeUnit.SECONDS);
+            blockingQueue2.poll(2, TimeUnit.SECONDS);
             session1.send("/game/" + gameID + "/start", "kamillo");
             Object object = blockingQueue1.poll(2, TimeUnit.SECONDS);
             assertTrue(object instanceof ExceptionResponseDTO);
-            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "NotEnoughPlayers");
+            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "not.enough.players");
             Object object2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
             assertNull(object2);
         }
 
         @Test
         void shouldThrowGameAlreadyStartedExceptionWhenStartingStartedGame() throws InterruptedException {
-            session1.send("/game/" + gameID + "/join", "player");
-            session2.send("/game/" + gameID + "/join", "player");
+            session1.send("/game/" + gameID + "/join", "msocha");
+            session2.send("/game/" + gameID + "/join", "kamillo");
             blockingQueue1.poll(2, TimeUnit.SECONDS);
             blockingQueue2.poll(2, TimeUnit.SECONDS);
             blockingQueue1.poll(2, TimeUnit.SECONDS);
@@ -427,9 +428,19 @@ class GameControllerTest extends TestContainersSetup {
             session1.send("/game/" + gameID + "/start", "kamillo");
             Object object = blockingQueue1.poll(1, TimeUnit.SECONDS);
             assertTrue(object instanceof ExceptionResponseDTO);
-            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "GameAlreadyStarted");
+            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "game.already.started");
             object = blockingQueue2.poll(2, TimeUnit.SECONDS);
             assertNull(object);
+        }
+
+        @Test
+        void shouldThrowUserNotFoundWhenStartedByUserNotInGame() throws InterruptedException {
+            session1.send("/game/" + gameID + "/start", "kamillo");
+            Object object1 = blockingQueue1.poll(2, TimeUnit.SECONDS);
+            Object object2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
+            assertNull(object2);
+            assertTrue(object1 instanceof ExceptionResponseDTO);
+            assertEquals(((ExceptionResponseDTO) object1).getExceptionMessage(), "user.not.found.in.game");
         }
 
         @Test
@@ -478,7 +489,7 @@ class GameControllerTest extends TestContainersSetup {
             session2.send("/game/" + UUID.randomUUID() + "/finish", "");
             Object object = blockingQueue2.poll(3, TimeUnit.SECONDS);
             assertTrue(object instanceof ExceptionResponseDTO);
-            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "GameNotFound");
+            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "game.not.found");
             Object object1 = blockingQueue1.poll(3, TimeUnit.SECONDS);
             assertNull(object1);
         }
@@ -488,7 +499,7 @@ class GameControllerTest extends TestContainersSetup {
             session2.send("/game/" + gameID + "/finish", "");
             Object object = blockingQueue2.poll(2, TimeUnit.SECONDS);
             assertTrue(object instanceof ExceptionResponseDTO);
-            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "GameNotStarted");
+            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "game.not.started");
             Object object1 = blockingQueue1.poll(3, TimeUnit.SECONDS);
             assertNull(object1);
         }
@@ -512,6 +523,7 @@ class GameControllerTest extends TestContainersSetup {
             session1.send("/game/" + gameID + "/start", "kamillo");
             blockingQueue1.poll(2, TimeUnit.SECONDS);
             blockingQueue2.poll(2, TimeUnit.SECONDS);
+
             session1.send("/game/" + gameID + "/answers", answerRequestDTO1);
             session2.send("/game/" + gameID + "/answers", answerRequestDTO2);
 
@@ -531,19 +543,34 @@ class GameControllerTest extends TestContainersSetup {
             session2.send("/game/" + UUID.randomUUID() + "/answers", answerRequestDTO2);
             Object object = blockingQueue2.poll(2, TimeUnit.SECONDS);
             assertTrue(object instanceof ExceptionResponseDTO);
-            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "GameNotFound");
+            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "game.not.found");
             Object object1 = blockingQueue1.poll(3, TimeUnit.SECONDS);
             assertNull(object1);
         }
 
         @Test
         void shouldThrowGameNotStartedExceptionWhenSendingAnswersToNotStartedGame() throws InterruptedException {
+            session2.send("/game/" + gameID + "/join", "msocha19");
+            blockingQueue1.poll(2, TimeUnit.SECONDS);
+            blockingQueue2.poll(2, TimeUnit.SECONDS);
             AnswerRequestDTO answerRequestDTO2 =
                 new AnswerRequestDTO(Map.of("msocha19", List.of("a", "b")));
             session2.send("/game/" + gameID + "/answers", answerRequestDTO2);
             Object object = blockingQueue2.poll(2, TimeUnit.SECONDS);
             assertTrue(object instanceof ExceptionResponseDTO);
-            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "GameNotStarted");
+            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "game.not.started");
+            Object object1 = blockingQueue1.poll(3, TimeUnit.SECONDS);
+            assertNull(object1);
+        }
+
+        @Test
+        void shouldThrowUserNotFoundInGameExceptionWhenSendingAnswerByUserNotInGame() throws InterruptedException {
+            AnswerRequestDTO answerRequestDTO2 =
+                new AnswerRequestDTO(Map.of("msocha19", List.of("a", "b")));
+            session2.send("/game/" + gameID + "/answers", answerRequestDTO2);
+            Object object = blockingQueue2.poll(2, TimeUnit.SECONDS);
+            assertTrue(object instanceof ExceptionResponseDTO);
+            assertEquals(((ExceptionResponseDTO) object).getExceptionMessage(), "user.not.found.in.game");
             Object object1 = blockingQueue1.poll(3, TimeUnit.SECONDS);
             assertNull(object1);
         }

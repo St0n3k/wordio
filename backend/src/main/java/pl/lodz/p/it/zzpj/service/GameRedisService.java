@@ -5,11 +5,9 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import pl.lodz.p.it.zzpj.controller.dto.UuidDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.AnswerDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.CreateGameDto;
-import pl.lodz.p.it.zzpj.controller.dto.game.request.AnswerRequestDTO;
-import pl.lodz.p.it.zzpj.controller.dto.game.response.AnswerResponseDTO;
-import pl.lodz.p.it.zzpj.controller.dto.game.response.FinishGameResponseDTO;
-import pl.lodz.p.it.zzpj.controller.dto.game.response.FinishNotifyOthersResponseDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.MessageDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.JoinGameResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.StartGameResponseDTO;
 import pl.lodz.p.it.zzpj.exception.game.GameAlreadyStartedException;
@@ -57,10 +55,11 @@ public class GameRedisService {
         throws GameNotFoundException, GameAlreadyStartedException, UsernameInUseException {
         try {
             semaphoreMap.get(gameID).acquireUninterruptibly();
-            if (gameRedisRepository.getGame(gameID).isStarted()) {
+            Game game = gameRedisRepository.getGame(gameID);
+            if (game.isStarted()) {
                 throw new GameAlreadyStartedException();
             }
-            if (gameRedisRepository.getGame(gameID).getPlayers().contains(player)) {
+            if (game.getPlayers().contains(player)) {
                 throw new UsernameInUseException();
             }
             List<String> players = addPlayer(gameID, player);
@@ -105,7 +104,7 @@ public class GameRedisService {
                 if (!game.isStarted()) {
                     throw new GameNotStartedException();
                 }
-                template.convertAndSend("/topic/game/" + gameID, new FinishNotifyOthersResponseDTO(),
+                template.convertAndSend("/topic/game/" + gameID, new MessageDTO("finish-notify"),
                     getActionsHeader("finish-notify"));
                 createTimerTask(gameID, game.getCountdownTime());
                 semaphoreMap.get(gameID).release();
@@ -115,11 +114,11 @@ public class GameRedisService {
         }
     }
 
-    public void sendAnswers(AnswerRequestDTO answerRequestDTO, UUID gameID)
+    public void sendAnswers(AnswerDTO answerDTO, UUID gameID)
         throws GameNotFoundException, GameNotStartedException, UserNotFoundInGameException {
         try {
             semaphoreMap.get(gameID).acquireUninterruptibly();
-            Set<String> username = answerRequestDTO.getAnswers().keySet();
+            Set<String> username = answerDTO.getAnswers().keySet();
             Game game = gameRedisRepository.getGame(gameID);
             if (!game.getPlayers().contains(username.iterator().next())) {
                 throw new UserNotFoundInGameException();
@@ -127,12 +126,12 @@ public class GameRedisService {
             if (!game.isStarted()) {
                 throw new GameNotStartedException();
             }
-            game.getRounds().peek().getAnswers().putAll(answerRequestDTO.getAnswers());
+            game.getRounds().peek().getAnswers().putAll(answerDTO.getAnswers());
             game = gameRedisRepository.putGame(game);
             Round round = game.getRounds().peek();
             if (round.getAnswers().size() == game.getPlayers().size()) {
                 template.convertAndSend("/topic/game/" + gameID,
-                    new AnswerResponseDTO(round.getAnswers()),
+                    new AnswerDTO(round.getAnswers()),
                     getActionsHeader("display-answers"));
             }
             semaphoreMap.get(gameID).release();
@@ -168,7 +167,7 @@ public class GameRedisService {
         timers.put(gameID, new TimerTask() {
             @Override
             public void run() {
-                template.convertAndSend("/topic/game/" + gameID, new FinishGameResponseDTO(),
+                template.convertAndSend("/topic/game/" + gameID, new MessageDTO("finish"),
                     getActionsHeader("finish"));
             }
         });

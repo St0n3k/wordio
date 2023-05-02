@@ -1,4 +1,4 @@
-package pl.lodz.p.it.zzpj.controller.dto.game.request;
+package pl.lodz.p.it.zzpj.controller.dto.game;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -11,7 +11,7 @@ import java.util.Map;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class AnswerRequestDTO {
+public class AnswerDTO {
     @NotNull
     private Map<String, List<String>> answers;
 }

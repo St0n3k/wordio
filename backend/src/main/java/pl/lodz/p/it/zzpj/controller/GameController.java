@@ -16,9 +16,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import pl.lodz.p.it.zzpj.controller.dto.UuidDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.AnswerDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.CreateGameDto;
-import pl.lodz.p.it.zzpj.controller.dto.game.request.AnswerRequestDTO;
-import pl.lodz.p.it.zzpj.controller.dto.game.response.ExceptionResponseDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.MessageDTO;
 import pl.lodz.p.it.zzpj.exception.game.GameAlreadyStartedException;
 import pl.lodz.p.it.zzpj.exception.game.GameNotFoundException;
 import pl.lodz.p.it.zzpj.exception.game.GameNotStartedException;
@@ -62,14 +62,14 @@ public class GameController {
     }
 
     @MessageMapping("/{gameID}/answers")
-    public void sendAnswer(@Valid @Payload AnswerRequestDTO answerDTO, @DestinationVariable UUID gameID)
+    public void sendAnswer(@Valid @Payload AnswerDTO answerDTO, @DestinationVariable UUID gameID)
         throws GameNotFoundException, GameNotStartedException, UserNotFoundInGameException {
         gameService.sendAnswers(answerDTO, gameID);
     }
 
     @MessageExceptionHandler
     @SendToUser("/topic/game/error")
-    public ExceptionResponseDTO handleException(Exception exception) {
-        return new ExceptionResponseDTO(exception.getMessage());
+    public MessageDTO handleException(Exception exception) {
+        return new MessageDTO(exception.getMessage());
     }
 }

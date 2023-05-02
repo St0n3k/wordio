@@ -59,7 +59,7 @@ public class RedisGameRepositoryTest extends TestContainersSetup {
             assertEquals(createdGame.getPlayed(), game.getPlayed());
             assertEquals(createdGame.getPlayers(), game.getPlayers());
             assertEquals(createdGame.getCountdownTime(), game.getCountdownTime());
-            assertEquals(createdGame.getMaxRoundLenght(), game.getMaxRoundLenght());
+            assertEquals(createdGame.getMaxRoundLength(), game.getMaxRoundLength());
             assertEquals(createdGame.getCategories(), game.getCategories());
         }
 

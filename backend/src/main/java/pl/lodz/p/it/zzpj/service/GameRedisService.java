@@ -94,7 +94,7 @@ public class GameRedisService {
                 game.getRounds().peek().getLetter()), getActionsHeader("start"));
         game.setStarted(true);
         gameRedisRepository.putGame(game);
-        createTimerTask(gameID, game.getMaxRoundLenght());
+        createTimerTask(gameID, game.getMaxRoundLength());
     }
 
     public void finishRound(UUID gameID) throws GameNotFoundException, GameNotStartedException {

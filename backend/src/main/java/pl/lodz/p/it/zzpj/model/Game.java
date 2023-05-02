@@ -26,7 +26,7 @@ public class Game implements Serializable {
     @EqualsAndHashCode.Include
     private UUID id;
     private int countdownTime;
-    private int maxRoundLenght;
+    private int maxRoundLength;
     private String authorName;
 
     @Setter
@@ -35,7 +35,7 @@ public class Game implements Serializable {
     public Game(int numberOfRounds, int countdownTime, int maxRoundLength, String authorName, List<String> categories) {
         this.id = UUID.randomUUID();
         this.countdownTime = countdownTime;
-        this.maxRoundLenght = maxRoundLength;
+        this.maxRoundLength = maxRoundLength;
         this.authorName = authorName;
         this.categories = categories;
         String letters = "abcdefghijklmnopqrstuvwxyz";

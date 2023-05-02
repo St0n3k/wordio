@@ -32,10 +32,10 @@ public class Game implements Serializable {
     @Setter
     private boolean started = false;
 
-    public Game(int numberOfRounds, int countdownTime, int maxRoundLenght, String authorName, List<String> categories) {
+    public Game(int numberOfRounds, int countdownTime, int maxRoundLength, String authorName, List<String> categories) {
         this.id = UUID.randomUUID();
         this.countdownTime = countdownTime;
-        this.maxRoundLenght = maxRoundLenght;
+        this.maxRoundLenght = maxRoundLength;
         this.authorName = authorName;
         this.categories = categories;
         String letters = "abcdefghijklmnopqrstuvwxyz";

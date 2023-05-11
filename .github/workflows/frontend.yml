@@ -1,0 +1,22 @@
+name: Build frontend
+
+on:
+  pull_request:
+    paths: 
+      - 'frontend/**'
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:  
+  build-front:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup Node.js environment
+      uses: actions/setup-node@v2.5.2
+    - name: Install and build frontend
+      working-directory: ./frontend
+      run: |
+        npm ci
+        npm run build

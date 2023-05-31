@@ -15,7 +15,7 @@ import java.util.Map;
 @EqualsAndHashCode
 public class Round implements Serializable {
 
-    private final Map<String, List<String>> answers = new HashMap<>();
+    private final Map<String, List<CheckedWord>> answers = new HashMap<>();
     private char letter;
 
     public Round(char letter) {

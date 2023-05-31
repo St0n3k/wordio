@@ -17,18 +17,13 @@ public class DictionaryService {
 
     private final WebClient webClient;
 
+    private final String dictionaryApiUrl = "https://sjp.pl/";
+
     public List<CheckedWord> checkWords(List<String> words) {
 
         List<Mono<CheckedWord>> individualResults =
             words.stream()
-                .map(
-                    word ->
-                        webClient
-                            .get()
-                            .uri("https://sjp.pl/" + word)
-                            .exchangeToMono(
-                                response -> Mono.just(
-                                    new CheckedWord(word, response.statusCode().is2xxSuccessful()))))
+                .map(this::checkWordDictionary)
                 .toList();
 
         Flux<CheckedWord> mergedResults = Flux.merge(individualResults);
@@ -36,5 +31,14 @@ public class DictionaryService {
         return mergedResults
             .collectList()
             .block();
+    }
+
+    public Mono<CheckedWord> checkWordDictionary(String word) {
+        return webClient
+            .get()
+            .uri(dictionaryApiUrl + word)
+            .exchangeToMono(
+                response -> Mono.just(
+                    new CheckedWord(word, response.statusCode().is2xxSuccessful())));
     }
 }

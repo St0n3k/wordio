@@ -1,4 +1,4 @@
-package pl.lodz.p.it.zzpj;
+package pl.lodz.p.it.zzpj.controller;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -16,11 +16,12 @@ import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import pl.lodz.p.it.zzpj.TestContainersSetup;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
-public class AccountAuthTest extends TestContainersSetup {
+public class AccountAuthControllerTest extends TestContainersSetup {
 
     @Autowired
     private MockMvc mockMvc;

@@ -9,7 +9,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class StartGameResponseDTO {
+public class StartRoundResponseDTO {
     private List<String> categories;
     private char letter;
 }

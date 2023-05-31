@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import pl.lodz.p.it.zzpj.controller.dto.PlayerVotesDTO;
 import pl.lodz.p.it.zzpj.controller.dto.UuidDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.CreateGameDto;
 import pl.lodz.p.it.zzpj.controller.dto.game.MessageDTO;
@@ -53,7 +54,7 @@ public class GameController {
     public void startGame(@DestinationVariable UUID gameID, @NotBlank @Size(min = 2) @Payload String player)
         throws GameNotFoundException, NotEnoughPlayersException, NotAuthorStartGameException,
         GameAlreadyStartedException, UserNotFoundInGameException {
-        gameService.start(gameID, player);
+        gameService.startGame(gameID, player);
     }
 
     @MessageMapping("/{gameID}/finish")
@@ -65,6 +66,12 @@ public class GameController {
     public void sendAnswer(@Valid @Payload PlayerAnswersDTO playerAnswersDTO, @DestinationVariable UUID gameID)
         throws GameNotFoundException, GameNotStartedException, UserNotFoundInGameException {
         gameService.sendAnswers(playerAnswersDTO, gameID);
+    }
+
+    @MessageMapping("/{gameID}/votes")
+    public void sendVotes(@Valid @Payload PlayerVotesDTO playerVotesDTO, @DestinationVariable UUID gameID)
+        throws GameNotFoundException, GameNotStartedException, UserNotFoundInGameException {
+        gameService.sendVotes(playerVotesDTO, gameID);
     }
 
     @MessageExceptionHandler

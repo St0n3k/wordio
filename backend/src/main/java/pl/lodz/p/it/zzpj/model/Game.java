@@ -4,6 +4,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.redis.core.RedisHash;
 
 import java.io.Serializable;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @RedisHash("Game")
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString
 public class Game implements Serializable {
 
     private final Stack<Round> rounds = new Stack<>();

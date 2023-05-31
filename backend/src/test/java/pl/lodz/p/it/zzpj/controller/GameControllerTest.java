@@ -37,9 +37,10 @@ import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.lodz.p.it.zzpj.TestContainersSetup;
-import pl.lodz.p.it.zzpj.controller.dto.game.AnswerDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.CreateGameDto;
 import pl.lodz.p.it.zzpj.controller.dto.game.MessageDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.PlayerAnswersDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.response.AllPlayersAnswersDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.JoinGameResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.StartGameResponseDTO;
 import pl.lodz.p.it.zzpj.service.GameRedisService;
@@ -47,7 +48,6 @@ import pl.lodz.p.it.zzpj.service.GameRedisService;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -209,7 +209,7 @@ class GameControllerTest extends TestContainersSetup {
                     return switch (headers.get("action").get(0)) {
                         case "join" -> JoinGameResponseDTO.class;
                         case "start" -> StartGameResponseDTO.class;
-                        case "display-answers" -> AnswerDTO.class;
+                        case "display-answers" -> AllPlayersAnswersDTO.class;
                         default -> MessageDTO.class;
                     };
                 }
@@ -239,7 +239,7 @@ class GameControllerTest extends TestContainersSetup {
                     return switch (headers.get("action").get(0)) {
                         case "join" -> JoinGameResponseDTO.class;
                         case "start" -> StartGameResponseDTO.class;
-                        case "display-answers" -> AnswerDTO.class;
+                        case "display-answers" -> AllPlayersAnswersDTO.class;
                         default -> MessageDTO.class;
                     };
                 }
@@ -510,32 +510,32 @@ class GameControllerTest extends TestContainersSetup {
             assertNotNull(blockingQueue2.poll(2, TimeUnit.SECONDS));
 
 
-            AnswerDTO AnswerDTO1 =
-                new AnswerDTO(Map.of("kamillo", List.of("a", "b")));
-            AnswerDTO AnswerDTO2 =
-                new AnswerDTO(Map.of("msocha19", List.of("a", "b")));
+            PlayerAnswersDTO playerAnswersDTO1 =
+                new PlayerAnswersDTO("kamillo", List.of("a", "b"));
+            PlayerAnswersDTO playerAnswersDTO2 =
+                new PlayerAnswersDTO("msocha19", List.of("a", "b"));
 
             session1.send("/game/" + gameID + "/start", "kamillo");
             blockingQueue1.poll(2, TimeUnit.SECONDS);
             blockingQueue2.poll(2, TimeUnit.SECONDS);
 
-            session1.send("/game/" + gameID + "/answers", AnswerDTO1);
-            session2.send("/game/" + gameID + "/answers", AnswerDTO2);
+            session1.send("/game/" + gameID + "/answers", playerAnswersDTO1);
+            session2.send("/game/" + gameID + "/answers", playerAnswersDTO2);
 
-            Object objectSession1 = blockingQueue1.poll(2, TimeUnit.SECONDS);
-            Object objectSession2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
-
-            assertTrue(objectSession1 instanceof AnswerDTO);
-            assertTrue(objectSession2 instanceof AnswerDTO);
-            assertEquals(((AnswerDTO) objectSession1).getAnswers().size(), 2);
-            assertEquals(((AnswerDTO) objectSession2).getAnswers().size(), 2);
+            Object objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
+            Object objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
+            
+            assertTrue(objectSession1 instanceof AllPlayersAnswersDTO);
+            assertTrue(objectSession2 instanceof AllPlayersAnswersDTO);
+            assertEquals(((AllPlayersAnswersDTO) objectSession1).getAnswers().size(), 2);
+            assertEquals(((AllPlayersAnswersDTO) objectSession2).getAnswers().size(), 2);
         }
 
         @Test
         void shouldThrowGameNotFoundExceptionWhenSendingAnswersToNonExistentGame() throws InterruptedException {
-            AnswerDTO AnswerDTO2 =
-                new AnswerDTO(Map.of("msocha19", List.of("a", "b")));
-            session2.send("/game/" + UUID.randomUUID() + "/answers", AnswerDTO2);
+            PlayerAnswersDTO playerAnswersDTO2 =
+                new PlayerAnswersDTO("msocha19", List.of("a", "b"));
+            session2.send("/game/" + UUID.randomUUID() + "/answers", playerAnswersDTO2);
             Object object = blockingQueue2.poll(2, TimeUnit.SECONDS);
             assertTrue(object instanceof MessageDTO);
             assertEquals(((MessageDTO) object).getMessage(), "game.not.found");
@@ -548,9 +548,9 @@ class GameControllerTest extends TestContainersSetup {
             session2.send("/game/" + gameID + "/join", "msocha19");
             blockingQueue1.poll(2, TimeUnit.SECONDS);
             blockingQueue2.poll(2, TimeUnit.SECONDS);
-            AnswerDTO AnswerDTO2 =
-                new AnswerDTO(Map.of("msocha19", List.of("a", "b")));
-            session2.send("/game/" + gameID + "/answers", AnswerDTO2);
+            PlayerAnswersDTO playerAnswersDTO2 =
+                new PlayerAnswersDTO("msocha19", List.of("a", "b"));
+            session2.send("/game/" + gameID + "/answers", playerAnswersDTO2);
             Object object = blockingQueue2.poll(2, TimeUnit.SECONDS);
             assertTrue(object instanceof MessageDTO);
             assertEquals(((MessageDTO) object).getMessage(), "game.not.started");
@@ -560,9 +560,9 @@ class GameControllerTest extends TestContainersSetup {
 
         @Test
         void shouldThrowUserNotFoundInGameExceptionWhenSendingAnswerByUserNotInGame() throws InterruptedException {
-            AnswerDTO AnswerDTO2 =
-                new AnswerDTO(Map.of("msocha19", List.of("a", "b")));
-            session2.send("/game/" + gameID + "/answers", AnswerDTO2);
+            PlayerAnswersDTO playerAnswersDTO2 =
+                new PlayerAnswersDTO("msocha19", List.of("a", "b"));
+            session2.send("/game/" + gameID + "/answers", playerAnswersDTO2);
             Object object = blockingQueue2.poll(2, TimeUnit.SECONDS);
             assertTrue(object instanceof MessageDTO);
             assertEquals(((MessageDTO) object).getMessage(), "user.not.found.in.game");

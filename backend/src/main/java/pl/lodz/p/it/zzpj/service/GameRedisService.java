@@ -5,9 +5,10 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import pl.lodz.p.it.zzpj.controller.dto.UuidDTO;
-import pl.lodz.p.it.zzpj.controller.dto.game.AnswerDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.CreateGameDto;
 import pl.lodz.p.it.zzpj.controller.dto.game.MessageDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.PlayerAnswersDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.response.AllPlayersAnswersDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.JoinGameResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.StartGameResponseDTO;
 import pl.lodz.p.it.zzpj.exception.game.GameAlreadyStartedException;
@@ -17,6 +18,7 @@ import pl.lodz.p.it.zzpj.exception.game.NotAuthorStartGameException;
 import pl.lodz.p.it.zzpj.exception.game.NotEnoughPlayersException;
 import pl.lodz.p.it.zzpj.exception.game.UserNotFoundInGameException;
 import pl.lodz.p.it.zzpj.exception.game.UsernameInUseException;
+import pl.lodz.p.it.zzpj.model.CheckedWord;
 import pl.lodz.p.it.zzpj.model.Game;
 import pl.lodz.p.it.zzpj.model.Round;
 import pl.lodz.p.it.zzpj.repository.GameRedisRepository;
@@ -25,7 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
@@ -38,6 +39,7 @@ public class GameRedisService {
     private final Map<UUID, Semaphore> semaphoreMap = new HashMap<>();
     private final Map<UUID, TimerTask> timers = new HashMap<>();
     private final GameRedisRepository gameRedisRepository;
+    private final DictionaryService dictionaryService;
 
     public UuidDTO createGame(CreateGameDto createGameDto) {
         UUID id = gameRedisRepository.putGame(
@@ -114,24 +116,40 @@ public class GameRedisService {
         }
     }
 
-    public void sendAnswers(AnswerDTO answerDTO, UUID gameID)
+    public void sendAnswers(PlayerAnswersDTO playerAnswersDTO, UUID gameID)
         throws GameNotFoundException, GameNotStartedException, UserNotFoundInGameException {
         try {
             semaphoreMap.get(gameID).acquireUninterruptibly();
-            Set<String> username = answerDTO.getAnswers().keySet();
+            String username = playerAnswersDTO.getUsername();
+
             Game game = gameRedisRepository.getGame(gameID);
-            if (!game.getPlayers().contains(username.iterator().next())) {
+            if (!game.getPlayers().contains(username)) {
                 throw new UserNotFoundInGameException();
             }
             if (!game.isStarted()) {
                 throw new GameNotStartedException();
             }
-            game.getRounds().peek().getAnswers().putAll(answerDTO.getAnswers());
+
+            List<String> answers = playerAnswersDTO.getAnswers();
+
+            Round finalRound = game.getRounds().peek();
+            List<CheckedWord> checkedWords = dictionaryService.checkWords(answers).stream()
+                .peek(word -> {
+                    if (word.getWord().charAt(0) != finalRound.getLetter()) {
+                        word.setValid(false);
+                    }
+                })
+                .toList();
+
+            game.getRounds().peek().getAnswers().put(username, checkedWords);
             game = gameRedisRepository.putGame(game);
             Round round = game.getRounds().peek();
+
             if (round.getAnswers().size() == game.getPlayers().size()) {
+                Map<String, List<CheckedWord>> roundAnswers = round.getAnswers();
+
                 template.convertAndSend("/topic/game/" + gameID,
-                    new AnswerDTO(round.getAnswers()),
+                    new AllPlayersAnswersDTO(roundAnswers),
                     getActionsHeader("display-answers"));
             }
             semaphoreMap.get(gameID).release();

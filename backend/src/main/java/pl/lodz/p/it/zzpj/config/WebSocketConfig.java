@@ -12,6 +12,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // endpoint for handshake
+        registry.addEndpoint("/wordio");
         registry.addEndpoint("/wordio")
             .setAllowedOrigins("*")
             .withSockJS();

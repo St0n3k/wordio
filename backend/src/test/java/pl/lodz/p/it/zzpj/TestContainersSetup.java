@@ -1,5 +1,8 @@
 package pl.lodz.p.it.zzpj;
 
+import static java.net.HttpURLConnection.HTTP_OK;
+import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -9,9 +12,6 @@ import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
-
-import static java.net.HttpURLConnection.HTTP_OK;
-import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -56,8 +56,7 @@ public abstract class TestContainersSetup {
                     .forPort(27017)
                     .forStatusCodeMatching(response -> response == HTTP_OK || response == HTTP_UNAUTHORIZED)
                     .withStartupTimeout(Duration.ofMinutes(2)))
-                .withExposedPorts(27017)
-                .withReuse(true);
+                .withExposedPorts(27017);
         }
 
         private static Integer getMongoMappedPort() {

@@ -37,17 +37,22 @@ import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.lodz.p.it.zzpj.TestContainersSetup;
+import pl.lodz.p.it.zzpj.controller.dto.PlayerVotesDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.CreateGameDto;
 import pl.lodz.p.it.zzpj.controller.dto.game.MessageDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.PlayerAnswersDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.AllPlayersAnswersDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.response.FinishedGameResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.JoinGameResponseDTO;
-import pl.lodz.p.it.zzpj.controller.dto.game.response.StartGameResponseDTO;
+import pl.lodz.p.it.zzpj.controller.dto.game.response.StartRoundResponseDTO;
+import pl.lodz.p.it.zzpj.model.Game;
 import pl.lodz.p.it.zzpj.service.GameRedisService;
 
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -72,7 +77,7 @@ class GameControllerTest extends TestContainersSetup {
 
         @Test
         void shouldCreateGameAndReturnUuidWithStatusCode201Test() throws Exception {
-            createGameDto = new CreateGameDto(1, 90, 10, List.of("a", "b"));
+            createGameDto = new CreateGameDto(2, 90, 10, List.of("a", "b"));
 
             mockMvc.perform(
                     post("/games")
@@ -187,7 +192,7 @@ class GameControllerTest extends TestContainersSetup {
             blockingQueue1.clear();
             blockingQueue2.clear();
             url = "ws://localhost:" + port + "/wordio";
-            CreateGameDto createGameDto = new CreateGameDto(1, 4, 2, List.of("a", "b"));
+            CreateGameDto createGameDto = new CreateGameDto(2, 4, 2, List.of("a", "b"));
             gameID = gameRedisService.createGame(createGameDto).getId();
             session1 = stompClient.connectAsync(url, new StompSessionHandlerAdapter() {
                 })
@@ -208,8 +213,9 @@ class GameControllerTest extends TestContainersSetup {
                 public Type getPayloadType(@NotNull StompHeaders headers) {
                     return switch (headers.get("action").get(0)) {
                         case "join" -> JoinGameResponseDTO.class;
-                        case "start" -> StartGameResponseDTO.class;
+                        case "start" -> StartRoundResponseDTO.class;
                         case "display-answers" -> AllPlayersAnswersDTO.class;
+                        case "game-finish" -> FinishedGameResponseDTO.class;
                         default -> MessageDTO.class;
                     };
                 }
@@ -238,8 +244,9 @@ class GameControllerTest extends TestContainersSetup {
                 public Type getPayloadType(@NotNull StompHeaders headers) {
                     return switch (headers.get("action").get(0)) {
                         case "join" -> JoinGameResponseDTO.class;
-                        case "start" -> StartGameResponseDTO.class;
+                        case "start" -> StartRoundResponseDTO.class;
                         case "display-answers" -> AllPlayersAnswersDTO.class;
+                        case "game-finish" -> FinishedGameResponseDTO.class;
                         default -> MessageDTO.class;
                     };
                 }
@@ -357,14 +364,14 @@ class GameControllerTest extends TestContainersSetup {
             Object objectSession1 = blockingQueue1.poll(2, TimeUnit.SECONDS);
             Object objectSession2 = blockingQueue2.poll(2, TimeUnit.SECONDS);
 
-            assertTrue(objectSession1 instanceof StartGameResponseDTO);
-            assertTrue(objectSession2 instanceof StartGameResponseDTO);
-            assertEquals(((StartGameResponseDTO) objectSession1).getCategories().size(), 2);
-            assertEquals(((StartGameResponseDTO) objectSession2).getCategories().size(), 2);
-            assertTrue(Character.isAlphabetic(((StartGameResponseDTO) objectSession1).getLetter()));
-            assertTrue(Character.isAlphabetic(((StartGameResponseDTO) objectSession2).getLetter()));
-            assertEquals(((StartGameResponseDTO) objectSession2).getLetter(),
-                ((StartGameResponseDTO) objectSession1).getLetter());
+            assertTrue(objectSession1 instanceof StartRoundResponseDTO);
+            assertTrue(objectSession2 instanceof StartRoundResponseDTO);
+            assertEquals(((StartRoundResponseDTO) objectSession1).getCategories().size(), 2);
+            assertEquals(((StartRoundResponseDTO) objectSession2).getCategories().size(), 2);
+            assertTrue(Character.isAlphabetic(((StartRoundResponseDTO) objectSession1).getLetter()));
+            assertTrue(Character.isAlphabetic(((StartRoundResponseDTO) objectSession2).getLetter()));
+            assertEquals(((StartRoundResponseDTO) objectSession2).getLetter(),
+                ((StartRoundResponseDTO) objectSession1).getLetter());
 
             objectSession1 = blockingQueue1.poll(5, TimeUnit.SECONDS);
             objectSession2 = blockingQueue2.poll(5, TimeUnit.SECONDS);
@@ -450,8 +457,8 @@ class GameControllerTest extends TestContainersSetup {
 
             session1.send("/game/" + gameID + "/start", "kamillo");
 
-            assertTrue(blockingQueue1.poll(2, TimeUnit.SECONDS) instanceof StartGameResponseDTO);
-            assertTrue(blockingQueue2.poll(2, TimeUnit.SECONDS) instanceof StartGameResponseDTO);
+            assertTrue(blockingQueue1.poll(2, TimeUnit.SECONDS) instanceof StartRoundResponseDTO);
+            assertTrue(blockingQueue2.poll(2, TimeUnit.SECONDS) instanceof StartRoundResponseDTO);
 
             session1.send("/game/" + gameID + "/finish", "");
             session2.send("/game/" + gameID + "/finish", "");
@@ -524,7 +531,7 @@ class GameControllerTest extends TestContainersSetup {
 
             Object objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
             Object objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
-            
+
             assertTrue(objectSession1 instanceof AllPlayersAnswersDTO);
             assertTrue(objectSession2 instanceof AllPlayersAnswersDTO);
             assertEquals(((AllPlayersAnswersDTO) objectSession1).getAnswers().size(), 2);
@@ -568,6 +575,84 @@ class GameControllerTest extends TestContainersSetup {
             assertEquals(((MessageDTO) object).getMessage(), "user.not.found.in.game");
             Object object1 = blockingQueue1.poll(3, TimeUnit.SECONDS);
             assertNull(object1);
+        }
+
+        @Test
+        void shouldSendAnswersAndThenSendVotesAndStartNewRoundAndThenFinishGame() throws InterruptedException {
+            session1.send("/game/" + gameID + "/join", "msocha19");
+            session2.send("/game/" + gameID + "/join", "kamillo");
+
+            assertNotNull(blockingQueue1.poll(2, TimeUnit.SECONDS));
+            assertNotNull(blockingQueue2.poll(2, TimeUnit.SECONDS));
+            assertNotNull(blockingQueue1.poll(2, TimeUnit.SECONDS));
+            assertNotNull(blockingQueue2.poll(2, TimeUnit.SECONDS));
+
+
+            PlayerAnswersDTO playerAnswersDTO1 =
+                new PlayerAnswersDTO("kamillo", List.of("lokówka", "maciek"));
+            PlayerAnswersDTO playerAnswersDTO2 =
+                new PlayerAnswersDTO("msocha19", List.of("konrad", "bóg"));
+
+            session1.send("/game/" + gameID + "/start", "kamillo");
+            Object objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
+            Object objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
+            
+            assertTrue(objectSession1 instanceof StartRoundResponseDTO);
+            assertTrue(objectSession2 instanceof StartRoundResponseDTO);
+
+            session1.send("/game/" + gameID + "/answers", playerAnswersDTO1);
+            session2.send("/game/" + gameID + "/answers", playerAnswersDTO2);
+
+            objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
+            objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof AllPlayersAnswersDTO);
+            assertTrue(objectSession2 instanceof AllPlayersAnswersDTO);
+            assertEquals(((AllPlayersAnswersDTO) objectSession1).getAnswers().size(), 2);
+            assertEquals(((AllPlayersAnswersDTO) objectSession2).getAnswers().size(), 2);
+
+            Map<String, List<Boolean>> map1 = new HashMap<>();
+            map1.put("kamillo", List.of(false, false));
+            map1.put("msocha19", List.of(true, false));
+
+            Map<String, List<Boolean>> map2 = new HashMap<>();
+            map2.put("kamillo", List.of(false, false));
+            map2.put("msocha19", List.of(true, false));
+
+            PlayerVotesDTO playerVotesDTO1 = new PlayerVotesDTO("kamillo", map1);
+            PlayerVotesDTO playerVotesDTO2 = new PlayerVotesDTO("msocha19", map2);
+
+            session1.send("/game/" + gameID + "/votes", playerVotesDTO1);
+            session2.send("/game/" + gameID + "/votes", playerVotesDTO2);
+
+            objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
+            objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof StartRoundResponseDTO);
+            assertTrue(objectSession2 instanceof StartRoundResponseDTO);
+
+            session1.send("/game/" + gameID + "/answers", playerAnswersDTO1);
+            session2.send("/game/" + gameID + "/answers", playerAnswersDTO2);
+
+            objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
+            objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof AllPlayersAnswersDTO);
+            assertTrue(objectSession2 instanceof AllPlayersAnswersDTO);
+            assertEquals(((AllPlayersAnswersDTO) objectSession1).getAnswers().size(), 2);
+            assertEquals(((AllPlayersAnswersDTO) objectSession2).getAnswers().size(), 2);
+
+            session1.send("/game/" + gameID + "/votes", playerVotesDTO1);
+            session2.send("/game/" + gameID + "/votes", playerVotesDTO2);
+
+            objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
+            objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof FinishedGameResponseDTO);
+            assertTrue(objectSession2 instanceof FinishedGameResponseDTO);
+
+            Game game = ((FinishedGameResponseDTO) objectSession1).getGame();
+            System.out.println(game);
         }
     }
 }

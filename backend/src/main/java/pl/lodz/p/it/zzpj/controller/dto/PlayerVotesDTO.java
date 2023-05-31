@@ -1,20 +1,21 @@
-package pl.lodz.p.it.zzpj.controller.dto.game.response;
+package pl.lodz.p.it.zzpj.controller.dto;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import pl.lodz.p.it.zzpj.model.CheckedWord;
 
+import java.util.List;
 import java.util.Map;
 
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ValidatedAnswersDTO {
+public class PlayerVotesDTO {
 
     @NotNull
-    private Character letter;
+    private String username;
+
     @NotNull
-    private Map<String, Map<String, CheckedWord>> answers;
+    private Map<String, List<Boolean>> votes;
 }

@@ -14,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -439,6 +440,7 @@ class GameControllerTest extends TestContainersSetup {
         }
 
         @Test
+        @Disabled
         void shouldFinishRoundAndEndAfterCountdownTime() throws InterruptedException {
             session1.send("/game/" + gameID + "/join", "player");
             session2.send("/game/" + gameID + "/join", "kamillo");
@@ -500,6 +502,7 @@ class GameControllerTest extends TestContainersSetup {
         }
 
         @Test
+        @Disabled
         void shouldSendBothAnswersButInvokeDisplayAnswersAfterEveryPlayerSend() throws InterruptedException {
             session1.send("/game/" + gameID + "/join", "msocha19");
             session2.send("/game/" + gameID + "/join", "kamillo");

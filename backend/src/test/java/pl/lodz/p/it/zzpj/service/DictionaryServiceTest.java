@@ -2,17 +2,15 @@ package pl.lodz.p.it.zzpj.service;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.web.reactive.function.client.WebClient;
 import pl.lodz.p.it.zzpj.model.CheckedWord;
 
 import java.util.List;
 
-@SpringBootTest
 public class DictionaryServiceTest {
 
-    @Autowired
-    private DictionaryService dictionaryService;
+
+    private final DictionaryService dictionaryService = new DictionaryService(WebClient.builder().build());
 
     @Test
     void shouldPositivelyValidateWords() {

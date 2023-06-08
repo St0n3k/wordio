@@ -1,8 +1,11 @@
 package pl.lodz.p.it.zzpj.exception.game;
 
-public class NotAuthorStartGameException extends Exception {
+import pl.lodz.p.it.zzpj.common.Messages;
+import pl.lodz.p.it.zzpj.exception.AppBaseException;
+
+public class NotAuthorStartGameException extends AppBaseException {
 
     public NotAuthorStartGameException() {
-        super("not.author.started");
+        super(Messages.NOT_AUTHOR_STARTED);
     }
 }

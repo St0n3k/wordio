@@ -1,8 +1,11 @@
 package pl.lodz.p.it.zzpj.exception.game;
 
-public class GameNotStartedException extends Exception {
+import pl.lodz.p.it.zzpj.common.Messages;
+import pl.lodz.p.it.zzpj.exception.AppBaseException;
+
+public class GameNotStartedException extends AppBaseException {
 
     public GameNotStartedException() {
-        super("game.not.started");
+        super(Messages.GAME_NOT_STARTED);
     }
 }

@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,13 +20,9 @@ public class Round implements Serializable {
 
     private final Map<String, List<CheckedWord>> answers = new HashMap<>();
     private char letter;
-    private int playersVoted = 0;
+    private List<String> playersVoted = new ArrayList<>();
 
     public Round(char letter) {
         this.letter = letter;
-    }
-
-    public void incrementPlayersVoted() {
-        this.playersVoted++;
     }
 }

@@ -2,7 +2,9 @@ package pl.lodz.p.it.zzpj.exception.auth;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import pl.lodz.p.it.zzpj.common.Messages;
+import pl.lodz.p.it.zzpj.exception.AppBaseException;
 
-@ResponseStatus(value = HttpStatus.UNAUTHORIZED, reason = "Wrong username or password")
-public class LoginException extends Exception {
+@ResponseStatus(value = HttpStatus.UNAUTHORIZED, reason = Messages.WRONG_USERNAME_OR_PASSWORD)
+public class LoginException extends AppBaseException {
 }

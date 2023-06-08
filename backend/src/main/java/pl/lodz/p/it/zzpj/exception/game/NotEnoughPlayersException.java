@@ -1,8 +1,11 @@
 package pl.lodz.p.it.zzpj.exception.game;
 
-public class NotEnoughPlayersException extends Exception {
+import pl.lodz.p.it.zzpj.common.Messages;
+import pl.lodz.p.it.zzpj.exception.AppBaseException;
+
+public class NotEnoughPlayersException extends AppBaseException {
 
     public NotEnoughPlayersException() {
-        super("not.enough.players");
+        super(Messages.NOT_ENOUGH_PLAYERS);
     }
 }

@@ -1,8 +1,11 @@
 package pl.lodz.p.it.zzpj.exception.game;
 
-public class UsernameInUseException extends Exception {
+import pl.lodz.p.it.zzpj.common.Messages;
+import pl.lodz.p.it.zzpj.exception.AppBaseException;
+
+public class UsernameInUseException extends AppBaseException {
 
     public UsernameInUseException() {
-        super("username.in.use");
+        super(Messages.USERNAME_IN_USE);
     }
 }

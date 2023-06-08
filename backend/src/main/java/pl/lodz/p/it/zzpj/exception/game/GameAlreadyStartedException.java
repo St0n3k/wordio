@@ -1,7 +1,10 @@
 package pl.lodz.p.it.zzpj.exception.game;
 
-public class GameAlreadyStartedException extends Exception {
+import pl.lodz.p.it.zzpj.common.Messages;
+import pl.lodz.p.it.zzpj.exception.AppBaseException;
+
+public class GameAlreadyStartedException extends AppBaseException {
     public GameAlreadyStartedException() {
-        super("game.already.started");
+        super(Messages.GAME_ALREADY_STARTED);
     }
 }

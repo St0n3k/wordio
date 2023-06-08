@@ -50,7 +50,6 @@ import pl.lodz.p.it.zzpj.controller.dto.game.response.JoinGameResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.StartRoundResponseDTO;
 import pl.lodz.p.it.zzpj.exception.game.PlayerAlreadySentAnswersException;
 import pl.lodz.p.it.zzpj.exception.game.PlayerAlreadyVotedException;
-import pl.lodz.p.it.zzpj.model.Game;
 import pl.lodz.p.it.zzpj.service.GameService;
 
 import java.lang.reflect.Type;
@@ -372,7 +371,7 @@ class GameControllerTest extends TestContainersSetup {
 
             objectSession1 = blockingQueue1.poll(5, TimeUnit.SECONDS);
             objectSession2 = blockingQueue2.poll(5, TimeUnit.SECONDS);
-            
+
             assertEquals(Actions.FINISH, ((MessageDTO) objectSession1).getMessage());
             assertEquals(Actions.FINISH, ((MessageDTO) objectSession2).getMessage());
         }
@@ -515,7 +514,6 @@ class GameControllerTest extends TestContainersSetup {
             Object objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
             Object objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
 
-            System.out.println(objectSession1);
             assertTrue(objectSession1 instanceof AllPlayersAnswersDTO);
             assertTrue(objectSession2 instanceof AllPlayersAnswersDTO);
             assertEquals(((AllPlayersAnswersDTO) objectSession1).getAnswers().size(), 2);
@@ -626,8 +624,6 @@ class GameControllerTest extends TestContainersSetup {
 
             assertTrue(objectSession1 instanceof FinishedGameResponseDTO);
             assertTrue(objectSession2 instanceof FinishedGameResponseDTO);
-
-            Game game = ((FinishedGameResponseDTO) objectSession1).getGame();
         }
 
         @Test
@@ -693,6 +689,56 @@ class GameControllerTest extends TestContainersSetup {
 
             assertEquals(((MessageDTO) objectSession1).getMessage(),
                 new PlayerAlreadyVotedException().getMessage());
+        }
+
+        @Test
+        void shouldSendAnswersAndThenWaitForVotesAndThenStartNewRound() throws InterruptedException {
+            prepareAndStartGame();
+
+            Object objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
+            Object objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
+
+            PlayerAnswersDTO playerAnswersDTO1 =
+                new PlayerAnswersDTO("kamillo", List.of("lokówka", "maciek"));
+            PlayerAnswersDTO playerAnswersDTO2 =
+                new PlayerAnswersDTO("msocha19", List.of("konrad", "bóg"));
+
+            assertTrue(objectSession1 instanceof StartRoundResponseDTO);
+            assertTrue(objectSession2 instanceof StartRoundResponseDTO);
+
+            session1.send("/game/" + gameID + "/answers", playerAnswersDTO1);
+            session2.send("/game/" + gameID + "/answers", playerAnswersDTO2);
+
+            objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
+            objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof AllPlayersAnswersDTO);
+            assertTrue(objectSession2 instanceof AllPlayersAnswersDTO);
+            assertEquals(((AllPlayersAnswersDTO) objectSession1).getAnswers().size(), 2);
+            assertEquals(((AllPlayersAnswersDTO) objectSession2).getAnswers().size(), 2);
+
+            Map<String, List<Boolean>> map1 = new HashMap<>();
+            map1.put("kamillo", List.of(false, false));
+            map1.put("msocha19", List.of(true, false));
+
+            PlayerVotesDTO playerVotesDTO1 = new PlayerVotesDTO("kamillo", map1);
+
+            session1.send("/game/" + gameID + "/votes", playerVotesDTO1);
+
+            objectSession1 = blockingQueue1.poll(30, TimeUnit.SECONDS);
+            objectSession2 = blockingQueue2.poll(30, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof MessageDTO);
+            assertTrue(objectSession2 instanceof MessageDTO);
+
+            assertEquals(((MessageDTO) objectSession1).getMessage(), Actions.VOTING_FINISH);
+            assertEquals(((MessageDTO) objectSession2).getMessage(), Actions.VOTING_FINISH);
+
+            objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
+            objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
+
+            assertTrue(objectSession1 instanceof StartRoundResponseDTO);
+            assertTrue(objectSession2 instanceof StartRoundResponseDTO);
         }
 
         private void prepareAndStartGame() throws InterruptedException {

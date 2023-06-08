@@ -1,6 +1,7 @@
 package pl.lodz.p.it.zzpj.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.java.Log;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -40,10 +41,11 @@ import java.util.concurrent.Semaphore;
 
 @Service
 @RequiredArgsConstructor
+@Log
 public class GameService {
     private final SimpMessagingTemplate template;
     private final Map<UUID, Semaphore> semaphoreMap = new HashMap<>();
-    private final Map<UUID, TimerTask> timers = new HashMap<>();
+    private final Map<String, TimerTask> timers = new HashMap<>();
     private final GameRedisRepository gameRedisRepository;
     private final DictionaryService dictionaryService;
 
@@ -102,10 +104,15 @@ public class GameService {
     }
 
     public void startRound(Game game) {
-        template.convertAndSend("/topic/game/" + game.getId(),
-            new StartRoundResponseDTO(game.getCategories(),
-                game.getRounds().peek().getLetter()), getActionsHeader(Actions.START));
-        createTimerTask(game.getId(), game.getMaxRoundLength(), Actions.FINISH);
+        if (game.getRounds().size() == 0) {
+            template.convertAndSend("/topic/game/" + game.getId(),
+                new FinishedGameResponseDTO(game), getActionsHeader(Actions.GAME_FINISH));
+        } else {
+            template.convertAndSend("/topic/game/" + game.getId(),
+                new StartRoundResponseDTO(game.getCategories(),
+                    game.getRounds().peek().getLetter()), getActionsHeader(Actions.START));
+            createTimerTask(game.getId(), game.getMaxRoundLength(), Actions.FINISH);
+        }
     }
 
     public void finishRound(UUID gameID) throws GameNotFoundException, GameNotStartedException {
@@ -163,6 +170,7 @@ public class GameService {
                 template.convertAndSend("/topic/game/" + gameID,
                     new AllPlayersAnswersDTO(roundAnswers),
                     getActionsHeader(Actions.DISPLAY_ANSWERS));
+                createTimerTaskForVoting(gameID, 20);
             }
             semaphoreMap.get(gameID).release();
         } catch (NullPointerException npe) {
@@ -205,12 +213,10 @@ public class GameService {
             gameRedisRepository.putGame(game);
             if (round.getPlayersVoted().size() == game.getPlayers().size()) {
                 game = popRound(gameID);
-                if (game.getRounds().size() == 0) {
-                    template.convertAndSend("/topic/game/" + gameID,
-                        new FinishedGameResponseDTO(game), getActionsHeader(Actions.GAME_FINISH));
-                } else {
-                    startRound(game);
+                if (timers.containsKey(gameID + Actions.VOTING_FINISH)) {
+                    timers.remove(gameID + Actions.VOTING_FINISH).cancel();
                 }
+                startRound(game);
             }
             semaphoreMap.get(gameID).release();
         } catch (NullPointerException npe) {
@@ -239,16 +245,40 @@ public class GameService {
     }
 
     public void createTimerTask(UUID gameID, int length, String message) {
-        if (timers.containsKey(gameID)) {
-            timers.remove(gameID).cancel();
+        if (timers.containsKey(gameID + message)) {
+            timers.remove(gameID + message).cancel();
         }
-        timers.put(gameID, new TimerTask() {
+        timers.put(gameID + message, new TimerTask() {
             @Override
             public void run() {
                 template.convertAndSend("/topic/game/" + gameID, new MessageDTO(message),
                     getActionsHeader(message));
             }
         });
-        new Timer().schedule(timers.get(gameID), length * 1000L);
+        new Timer().schedule(timers.get(gameID + message), length * 1000L);
+    }
+
+    private void createTimerTaskForVoting(UUID gameID, int length) throws AppBaseException {
+        if (timers.containsKey(gameID + Actions.VOTING_FINISH)) {
+            timers.remove(gameID + Actions.VOTING_FINISH).cancel();
+        }
+        if (timers.containsKey(gameID + Actions.FINISH)) {
+            timers.remove(gameID + Actions.FINISH).cancel();
+        }
+        timers.put(gameID + Actions.VOTING_FINISH, new TimerTask() {
+            @Override
+            public void run() {
+                template.convertAndSend("/topic/game/" + gameID, new MessageDTO(Actions.VOTING_FINISH),
+                    getActionsHeader(Actions.VOTING_FINISH));
+                Game game = null;
+                try {
+                    game = popRound(gameID);
+                } catch (AppBaseException e) {
+                    log.severe("Unexpected exception during starting new round after voting");
+                }
+                startRound(game);
+            }
+        });
+        new Timer().schedule(timers.get(gameID + Actions.VOTING_FINISH), length * 1000L);
     }
 }

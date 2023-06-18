@@ -714,8 +714,8 @@ class GameControllerTest extends TestContainersSetup {
 
             assertTrue(objectSession1 instanceof AllPlayersAnswersDTO);
             assertTrue(objectSession2 instanceof AllPlayersAnswersDTO);
-            assertEquals(((AllPlayersAnswersDTO) objectSession1).getAnswers().size(), 2);
-            assertEquals(((AllPlayersAnswersDTO) objectSession2).getAnswers().size(), 2);
+            assertEquals(2, ((AllPlayersAnswersDTO) objectSession1).getAnswers().size());
+            assertEquals(2, ((AllPlayersAnswersDTO) objectSession2).getAnswers().size());
 
             Map<String, List<Boolean>> map1 = new HashMap<>();
             map1.put("kamillo", List.of(false, false));
@@ -731,14 +731,91 @@ class GameControllerTest extends TestContainersSetup {
             assertTrue(objectSession1 instanceof MessageDTO);
             assertTrue(objectSession2 instanceof MessageDTO);
 
-            assertEquals(((MessageDTO) objectSession1).getMessage(), Actions.VOTING_FINISH);
-            assertEquals(((MessageDTO) objectSession2).getMessage(), Actions.VOTING_FINISH);
+            assertEquals(Actions.VOTING_FINISH, ((MessageDTO) objectSession1).getMessage());
+            assertEquals(Actions.VOTING_FINISH, ((MessageDTO) objectSession2).getMessage());
 
             objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
             objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
 
             assertTrue(objectSession1 instanceof StartRoundResponseDTO);
             assertTrue(objectSession2 instanceof StartRoundResponseDTO);
+        }
+
+        @Test
+        void shouldSendScoresAfterGameEndsTest() throws InterruptedException {
+            prepareAndStartGame();
+
+            String username1 = "kamillo";
+            String username2 = "msocha19";
+
+            Object objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
+            Object objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
+
+            var votes = List.of(
+                List.of(true, true),   // round1: user1 -> user1
+                List.of(true, true),   // round1: user1 -> user2
+                List.of(true, true),   // round1: user2 -> user1
+                List.of(true, true),   // round1: user2 -> user2
+                List.of(false, true),  // round2: user1 -> user1
+                List.of(true, true),   // round2: user1 -> user2
+                List.of(true, true),   // round2: user2 -> user1
+                List.of(true, true)    // round2: user2 -> user2
+            );
+
+            for (int i = 0; i < 2; i++) {
+                assertTrue(objectSession1 instanceof StartRoundResponseDTO);
+                assertTrue(objectSession2 instanceof StartRoundResponseDTO);
+
+                String letter = String.valueOf(((StartRoundResponseDTO) objectSession1).getLetter());
+
+                PlayerAnswersDTO playerAnswersDTO1 = new PlayerAnswersDTO(username1,
+                    List.of(
+                        letter.repeat(1),
+                        letter.repeat(2)));
+                PlayerAnswersDTO playerAnswersDTO2 = new PlayerAnswersDTO(username2,
+                    List.of(
+                        letter.repeat(3),
+                        i == 1 ? letter.repeat(4) : "0000"));
+
+                session1.send("/game/" + gameID + "/answers", playerAnswersDTO1);
+                session2.send("/game/" + gameID + "/answers", playerAnswersDTO2);
+
+                objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
+                objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
+
+                assertTrue(objectSession1 instanceof AllPlayersAnswersDTO);
+                AllPlayersAnswersDTO allPlayersAnswersDTO = (AllPlayersAnswersDTO) objectSession1;
+                assertEquals(2, allPlayersAnswersDTO.getAnswers().size());
+
+                assertTrue(objectSession2 instanceof AllPlayersAnswersDTO);
+                allPlayersAnswersDTO = (AllPlayersAnswersDTO) objectSession2;
+                assertEquals(2, allPlayersAnswersDTO.getAnswers().size());
+
+                PlayerVotesDTO playerVotesDTO1 = new PlayerVotesDTO(username1, Map.of(
+                    username1, votes.get(4 * i),
+                    username2, votes.get(4 * i + 1)));
+                PlayerVotesDTO playerVotesDTO2 = new PlayerVotesDTO(username2, Map.of(
+                    username1, votes.get(4 * i + 2),
+                    username2, votes.get(4 * i + 3)));
+
+                session1.send("/game/" + gameID + "/votes", playerVotesDTO1);
+                session2.send("/game/" + gameID + "/votes", playerVotesDTO2);
+
+                objectSession1 = blockingQueue1.poll(9, TimeUnit.SECONDS);
+                objectSession2 = blockingQueue2.poll(9, TimeUnit.SECONDS);
+            }
+
+            assertTrue(objectSession1 instanceof FinishedGameResponseDTO);
+            assertTrue(objectSession2 instanceof FinishedGameResponseDTO);
+
+            var finishedGameResponseDto1 = (FinishedGameResponseDTO) objectSession1;
+
+            var finishedGameResponseDto2 = (FinishedGameResponseDTO) objectSession2;
+            assertEquals(finishedGameResponseDto1, finishedGameResponseDto2);
+
+            var scores = finishedGameResponseDto2.getGame().getScores();
+            assertEquals(35, scores.get(username1));
+            assertEquals(35, scores.get(username2));
         }
 
         private void prepareAndStartGame() throws InterruptedException {

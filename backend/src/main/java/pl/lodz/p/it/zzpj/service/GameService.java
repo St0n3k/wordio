@@ -15,6 +15,7 @@ import pl.lodz.p.it.zzpj.controller.dto.game.response.AllPlayersAnswersDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.FinishedGameResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.JoinGameResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.StartRoundResponseDTO;
+import pl.lodz.p.it.zzpj.entity.GameDocument;
 import pl.lodz.p.it.zzpj.exception.AppBaseException;
 import pl.lodz.p.it.zzpj.exception.game.GameAlreadyStartedException;
 import pl.lodz.p.it.zzpj.exception.game.GameNotFoundException;
@@ -29,6 +30,7 @@ import pl.lodz.p.it.zzpj.model.CheckedWord;
 import pl.lodz.p.it.zzpj.model.Game;
 import pl.lodz.p.it.zzpj.model.Round;
 import pl.lodz.p.it.zzpj.repository.GameRedisRepository;
+import pl.lodz.p.it.zzpj.repository.GameRepository;
 
 import java.util.HashMap;
 import java.util.List;
@@ -48,6 +50,7 @@ public class GameService {
     private final Map<String, TimerTask> timers = new HashMap<>();
     private final GameRedisRepository gameRedisRepository;
     private final DictionaryService dictionaryService;
+    private final GameRepository gameRepository;
 
     public UuidDTO createGame(CreateGameDto createGameDto) {
         UUID id = gameRedisRepository.putGame(
@@ -105,6 +108,7 @@ public class GameService {
 
     public void startRound(Game game) {
         if (game.getRounds().isEmpty()) {
+            gameRepository.save(GameDocument.of(game));
             template.convertAndSend("/topic/game/" + game.getId(),
                 new FinishedGameResponseDTO(game), getActionsHeader(Actions.GAME_FINISH));
         } else {

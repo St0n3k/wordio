@@ -50,6 +50,7 @@ import pl.lodz.p.it.zzpj.controller.dto.game.response.JoinGameResponseDTO;
 import pl.lodz.p.it.zzpj.controller.dto.game.response.StartRoundResponseDTO;
 import pl.lodz.p.it.zzpj.exception.game.PlayerAlreadySentAnswersException;
 import pl.lodz.p.it.zzpj.exception.game.PlayerAlreadyVotedException;
+import pl.lodz.p.it.zzpj.repository.GameRepository;
 import pl.lodz.p.it.zzpj.service.GameService;
 
 import java.lang.reflect.Type;
@@ -73,6 +74,9 @@ class GameControllerTest extends TestContainersSetup {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private GameRepository gameRepository;
 
     @Nested
     @WithUserDetails(USERNAME)
@@ -742,7 +746,7 @@ class GameControllerTest extends TestContainersSetup {
         }
 
         @Test
-        void shouldSendScoresAfterGameEndsTest() throws InterruptedException {
+        void shouldSendScoresAndSaveToDbAfterGameEndsTest() throws InterruptedException {
             prepareAndStartGame();
 
             String username1 = "kamillo";
@@ -761,6 +765,8 @@ class GameControllerTest extends TestContainersSetup {
                 List.of(true, true),   // round2: user2 -> user1
                 List.of(true, true)    // round2: user2 -> user2
             );
+
+            long gameCount = gameRepository.count();
 
             for (int i = 0; i < 2; i++) {
                 assertTrue(objectSession1 instanceof StartRoundResponseDTO);
@@ -816,6 +822,7 @@ class GameControllerTest extends TestContainersSetup {
             var scores = finishedGameResponseDto2.getGame().getScores();
             assertEquals(35, scores.get(username1));
             assertEquals(35, scores.get(username2));
+            assertEquals(gameCount + 1, gameRepository.count());
         }
 
         private void prepareAndStartGame() throws InterruptedException {

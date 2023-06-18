@@ -104,7 +104,7 @@ public class GameService {
     }
 
     public void startRound(Game game) {
-        if (game.getRounds().size() == 0) {
+        if (game.getRounds().isEmpty()) {
             template.convertAndSend("/topic/game/" + game.getId(),
                 new FinishedGameResponseDTO(game), getActionsHeader(Actions.GAME_FINISH));
         } else {
@@ -216,6 +216,8 @@ public class GameService {
                 if (timers.containsKey(gameID + Actions.VOTING_FINISH)) {
                     timers.remove(gameID + Actions.VOTING_FINISH).cancel();
                 }
+                game.assignPointsForLastFinishedRound();
+                gameRedisRepository.putGame(game);
                 startRound(game);
             }
             semaphoreMap.get(gameID).release();
@@ -239,7 +241,7 @@ public class GameService {
 
     public List<String> addPlayer(UUID gameID, String player) throws AppBaseException {
         Game game = gameRedisRepository.getGame(gameID);
-        game.getPlayers().add(player);
+        game.addPlayer(player);
         gameRedisRepository.putGame(game);
         return game.getPlayers();
     }

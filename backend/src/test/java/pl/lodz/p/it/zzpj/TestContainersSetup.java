@@ -56,7 +56,8 @@ public abstract class TestContainersSetup {
                     .forPort(27017)
                     .forStatusCodeMatching(response -> response == HTTP_OK || response == HTTP_UNAUTHORIZED)
                     .withStartupTimeout(Duration.ofMinutes(2)))
-                .withExposedPorts(27017);
+                .withExposedPorts(27017)
+                .withReuse(true);
         }
 
         private static Integer getMongoMappedPort() {
@@ -67,7 +68,7 @@ public abstract class TestContainersSetup {
     private static class RedisContainer extends GenericContainer<RedisContainer> {
         public RedisContainer() {
             super(DockerImageName.parse("redis/redis-stack:latest"));
-            this.withExposedPorts(6379);
+            this.withExposedPorts(6379).withReuse(true);
         }
 
         private static Integer getRedisMappedPort() {

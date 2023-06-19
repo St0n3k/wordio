@@ -1,9 +1,0 @@
-Manifest-Version: 1.0
-Created-By: IntelliJ IDEA
-Built-By: msoch
-Build-Jdk: Oracle OpenJDK version 17.0.5
-Implementation-Title: Word-io
-Implementation-Version: 0.0.1-SNAPSHOT
-Implementation-Vendor-Id: pl.lodz.p.it.zzpj
-Main-Class: ${start-class}
-

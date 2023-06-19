@@ -1,0 +1,139 @@
+<div class="col-sm-10 col-lg-6 mx-auto">
+    <form
+        class="col-sm-10 mx-auto mt-3 card p-5 shadow"
+        [formGroup]="createGameForm"
+        (ngSubmit)="onSubmit()">
+        <div class="mx-auto card-title">
+            <h1>Game settings</h1>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-sm-3 mb-3">
+                    <label>Number of Rounds</label>
+                    <div>
+                        <i
+                            class="bi bi-plus-lg m-3"
+                            (click)="addRound()"></i>
+                        <b>{{ rounds }}</b>
+                        <i
+                            class="bi bi-dash-lg m-3"
+                            (click)="removeRound()"></i>
+                    </div>
+                </div>
+                <div class="col form-group mb-3">
+                    <label for="countdown">Countdown time</label>
+                    <div class="row">
+                        <div class="col">
+                            <input
+                                type="number"
+                                class="form-control m-1"
+                                id="countdown"
+                                placeholder="Countdown time"
+                                formControlName="countdown"
+                                [ngClass]="{
+                                    'is-valid':
+                                        countdown &&
+                                        countdown.touched &&
+                                        countdown.valid,
+                                    'is-invalid':
+                                        countdown &&
+                                        countdown.touched &&
+                                        countdown.invalid
+                                }" />
+                            <label
+                                *ngIf="countdown?.invalid"
+                                class="invalid-feedback">
+                                Countdown value cannot be empty and should be
+                                between 1-30
+                            </label>
+                        </div>
+                        <div class="col-lg-10"></div>
+                    </div>
+                </div>
+                <div class="col form-group mb-3">
+                    <label for="max-round">Max round time</label>
+                    <div class="row">
+                        <div class="col">
+                            <input
+                                type="number"
+                                class="form-control m-1"
+                                id="max-round"
+                                placeholder="Max round time"
+                                formControlName="maxround"
+                                [ngClass]="{
+                                    'is-valid':
+                                        maxround &&
+                                        maxround.touched &&
+                                        maxround.valid,
+                                    'is-invalid':
+                                        maxround &&
+                                        maxround.touched &&
+                                        maxround.invalid
+                                }" />
+                            <label
+                                *ngIf="maxround?.invalid"
+                                class="invalid-feedback">
+                                Max round time cannot be empty and should be
+                                between 1-300
+                            </label>
+                        </div>
+                        <div class="col-lg-10"></div>
+                    </div>
+                </div>
+            </div>
+            <div
+                class="form-group mb-3"
+                formArrayName="categories">
+                <label>Categories</label>
+                <div
+                    class="row"
+                    *ngFor="let category of categories; let i = index">
+                    <div
+                        class="col-9"
+                        formGroupName="{{ i }}">
+                        <input
+                            type="text"
+                            class="form-control mt-1"
+                            placeholder="Category"
+                            formControlName="category"
+                            [ngClass]="{
+                                'is-valid':
+                                    getCategories().controls[i].valid &&
+                                    getCategories().controls[i].touched,
+                                'is-invalid':
+                                    getCategories().controls[i].invalid &&
+                                    getCategories().controls[i].touched
+                            }" />
+                        <label
+                            *ngIf="getCategories().controls[i].invalid"
+                            class="invalid-feedback">
+                            Category name cannot be empty, and should be between
+                            3-20 charaters
+                        </label>
+                    </div>
+                    <div
+                        class="col d-flex justify-content-start align-items-center">
+                        <button
+                            class="btn btn-sm btn-warning hover-overlay ripple"
+                            (click)="removeCategory(i)"
+                            *ngIf="getCategories().length > 2">
+                            <i class="bi bi-dash-lg m-2"></i>
+                        </button>
+                    </div>
+                </div>
+                <i
+                    class="bi bi-plus-lg hover-overlay ripple"
+                    (click)="addCategory()">
+                </i>
+            </div>
+            <div class="col-4 mx-auto">
+                <button
+                    [disabled]="createGameForm.invalid"
+                    type="submit"
+                    class="w-100 btn btn-warning">
+                    Create game!
+                </button>
+            </div>
+        </div>
+    </form>
+</div>

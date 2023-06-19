@@ -5,6 +5,7 @@ import { RegisterComponent } from './components/register/register.component';
 import { ProfileComponent } from './components/profile/profile.component';
 import { PlayerGuard } from './guards/player.guard';
 import { LoginRegisterGuard } from './guards/login-register.guard';
+import { GameSettingsComponent } from './components/game-settings/game-settings.component';
 
 const routes: Routes = [
     {
@@ -17,7 +18,16 @@ const routes: Routes = [
         component: RegisterComponent,
         canActivate: [LoginRegisterGuard]
     },
-    { path: 'profile', component: ProfileComponent, canActivate: [PlayerGuard] }
+    {
+        path: 'profile',
+        component: ProfileComponent,
+        canActivate: [PlayerGuard]
+    },
+    {
+        path: 'game-settings',
+        component: GameSettingsComponent,
+        canActivate: [PlayerGuard]
+    }
 ];
 
 @NgModule({

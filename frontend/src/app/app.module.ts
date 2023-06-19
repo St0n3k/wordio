@@ -15,6 +15,7 @@ import { ChangePasswordComponent } from './components/change-password/change-pas
 import { DeleteAccountComponent } from './components/delete-account/delete-account.component';
 import { JwtInterceptor } from './interceptors/jwt.interceptor';
 import { UsernamePipe } from './components/navbar/usernamePipe';
+import { GameSettingsComponent } from './components/game-settings/game-settings.component';
 
 @NgModule({
     declarations: [
@@ -26,6 +27,7 @@ import { UsernamePipe } from './components/navbar/usernamePipe';
         ProfileComponent,
         ChangePasswordComponent,
         DeleteAccountComponent,
+        GameSettingsComponent,
         UsernamePipe
     ],
     imports: [
